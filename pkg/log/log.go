@@ -53,7 +53,8 @@ func getConfigLogArgs(filename string) (zapcore.WriteSyncer, zapcore.Level) {
 			Compress:   log.Compress,
 			LocalTime:  true,
 		}
-		syncers = append(syncers, zapcore.AddSync(logger))
+		_ = logger
+		//syncers = append(syncers, zapcore.AddSync(logger))
 	}
 
 	syncers = append(syncers, os.Stdout)

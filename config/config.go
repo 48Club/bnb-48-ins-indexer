@@ -34,7 +34,7 @@ type MysqlConfig struct {
 }
 
 type IndexConfig struct {
-	ScanBlock uint64 `mapstructure:"scan_block"`
+	ScanBlock uint64 `mapstructure:"scan_block" yaml:"scan_block"`
 }
 
 type AppConfig struct {

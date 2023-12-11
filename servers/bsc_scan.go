@@ -3,6 +3,7 @@ package servers
 import (
 	"context"
 	"errors"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jwrookie/fans/config"
@@ -12,6 +13,7 @@ import (
 	"github.com/jwrookie/fans/pkg/log"
 	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
+	"math/big"
 	"strings"
 	"time"
 )
@@ -36,13 +38,14 @@ func (s *BscScanService) Scan() error {
 	block := s.conf.BscIndex.ScanBlock
 
 	for {
-		targetBlock, err := global.BscClient.BlockByNumber(context.TODO(), nil)
+		targetBlock, err := global.BscClient.BlockByNumber(context.TODO(), big.NewInt(int64(block)))
 		if err != nil {
-			return err
-		}
-
-		if targetBlock.NumberU64() < block {
-			time.Sleep(time.Second)
+			if errors.Is(err, ethereum.NotFound) {
+				time.Sleep(time.Second)
+				continue
+			} else {
+				return err
+			}
 		}
 
 		if err = s.work(targetBlock); err != nil {
@@ -61,8 +64,15 @@ func (s *BscScanService) Scan() error {
 func (s *BscScanService) work(block *types.Block) error {
 	db := database.Mysql().Begin()
 	defer db.Rollback()
+
+	if s.conf.App.MintStartBlock <= block.NumberU64() && block.NumberU64() <= s.conf.App.MintEndBlock {
+		if !strings.EqualFold(block.Coinbase().Hex(), global.BNB48) {
+			return nil
+		}
+	}
+
 	for _, tx := range block.Transactions() {
-		if err := s._work1(db, block.NumberU64(), tx, block.Coinbase().Hex()); err != nil {
+		if err := s._work1(db, block.NumberU64(), tx); err != nil {
 			return err
 		}
 	}
@@ -70,12 +80,8 @@ func (s *BscScanService) work(block *types.Block) error {
 	return db.Commit().Error
 }
 
-func (s *BscScanService) _work1(db *gorm.DB, blockNumber uint64, tx *types.Transaction, coinbase string) error {
+func (s *BscScanService) _work1(db *gorm.DB, blockNumber uint64, tx *types.Transaction) error {
 	if s.conf.App.MintStartBlock <= blockNumber && blockNumber <= s.conf.App.MintEndBlock {
-		if !strings.EqualFold(coinbase, global.BNB48) {
-			return nil
-		}
-
 		return s.mint(db, tx, blockNumber)
 	}
 
