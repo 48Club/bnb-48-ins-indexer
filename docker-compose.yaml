@@ -10,7 +10,7 @@ services:
       - "0.0.0.0:8888:8888"
     volumes:
       - ./config:/www/fans_index/config
-      - ./logs/fans_index:/www/fans_index/logs/fans_index
+      - ./logs:/www/fans_index/logs
     privileged: true
     networks:
       - fans_index
