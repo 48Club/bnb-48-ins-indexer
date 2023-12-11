@@ -16,7 +16,7 @@ log:
     compress: false
 
 mysql:
-    url: root:mysqlpasswd@tcp(mysql:3306)/fans_index?charset=utf8mb4&parseTime=True&loc=Local
+    url: root:mysqlpasswd@tcp(44.197.228.58:3306)/fans_index?charset=utf8mb4&parseTime=True&loc=Local
     prefix: ""
     max_idle_conns: 10
     max_open_conns: 50

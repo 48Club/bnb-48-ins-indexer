@@ -2,7 +2,7 @@ package servers
 
 import (
 	"context"
-	"github.com/cockroachdb/errors"
+	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jwrookie/fans/config"
@@ -53,7 +53,7 @@ func (s *BscScanService) Scan() error {
 		block++
 
 		if err = config.SaveETHConfig(block); err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 	}
 }
@@ -72,7 +72,6 @@ func (s *BscScanService) work(block *types.Block) error {
 
 func (s *BscScanService) _work1(db *gorm.DB, blockNumber uint64, tx *types.Transaction, coinbase string) error {
 	if s.conf.App.MintStartBlock <= blockNumber && blockNumber <= s.conf.App.MintEndBlock {
-		log.Sugar.Info(strings.EqualFold(coinbase, global.BNB48), coinbase, global.BNB48)
 		if !strings.EqualFold(coinbase, global.BNB48) {
 			return nil
 		}
@@ -96,7 +95,6 @@ func (s *BscScanService) mint(db *gorm.DB, tx *types.Transaction, blockNumber ui
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	model, err := s.account.SelectByAddress(db, from)
 	if err != nil {
-		log.Sugar.Info(errors.Is(err, gorm.ErrRecordNotFound))
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			model = &dao.AccountModel{}
 			if model.Id, err = utils.GenSnowflakeID(); err != nil {
