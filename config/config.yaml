@@ -16,7 +16,7 @@ log:
     compress: false
 
 mysql:
-    url: root:mysqlpasswd@tcp(mysql:3306)/c2c_app?charset=utf8mb4&parseTime=True&loc=Local
+    url: root:e7ruIidkTffd_fsdl!.3@tcp(mysql:3306)/c2c_app?charset=utf8mb4&parseTime=True&loc=Local
     prefix: ""
     max_idle_conns: 10
     max_open_conns: 50
