@@ -102,7 +102,9 @@ func (s *BscScanService) mint(db *gorm.DB, tx *types.Transaction, blockNumber ui
 	model, err := s.account.SelectByAddress(db, from)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			model = &dao.AccountModel{}
+			model = &dao.AccountModel{
+				Address: from,
+			}
 			if model.Id, err = utils.GenSnowflakeID(); err != nil {
 				return err
 			}
