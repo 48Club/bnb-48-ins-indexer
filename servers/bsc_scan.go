@@ -95,7 +95,7 @@ func (s *BscScanService) mint(db *gorm.DB, tx *types.Transaction, blockNumber ui
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	model, err := s.account.SelectByAddress(db, from)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.As(err, gorm.ErrRecordNotFound) {
 			model = &dao.AccountModel{}
 			if model.Id, err = utils.GenSnowflakeID(); err != nil {
 				return err
@@ -159,7 +159,7 @@ func (s *BscScanService) transfer(db *gorm.DB, tx *types.Transaction, blockNumbe
 	// s1: select from account
 	fromAccount, err := s.account.SelectByAddress(db, from)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.As(err, gorm.ErrRecordNotFound) {
 			return nil
 		} else {
 			return err
@@ -177,7 +177,7 @@ func (s *BscScanService) transfer(db *gorm.DB, tx *types.Transaction, blockNumbe
 		State:     1,
 	})
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.As(err, gorm.ErrRecordNotFound) {
 			return nil
 		} else {
 			return err
@@ -196,7 +196,7 @@ func (s *BscScanService) transfer(db *gorm.DB, tx *types.Transaction, blockNumbe
 	// s4: update to balance
 	toModel, err := s.account.SelectByAddress(db, strings.ToLower(tx.To().Hex()))
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.As(err, gorm.ErrRecordNotFound) {
 			toModel = &dao.AccountModel{}
 			if toModel.Id, err = utils.GenSnowflakeID(); err != nil {
 				return err

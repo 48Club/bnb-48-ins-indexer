@@ -22,7 +22,7 @@ services:
   mysql:
     image: "mysql:8.0.29"
     environment:
-      MYSQL_ROOT_PASSWORD: e7ruIidkTffd_fsdl!.3
+      MYSQL_ROOT_PASSWORD: mysqlpasswd
       MYSQL_ROOT_HOST: "%"
     restart: always
     command: ["--default-authentication-plugin","mysql_native_password"]
