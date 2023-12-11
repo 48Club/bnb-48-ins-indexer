@@ -55,8 +55,6 @@ func (s *BscScanService) Scan() error {
 		if err = config.SaveETHConfig(block); err != nil {
 			return errors.WithStack(err)
 		}
-
-		time.Sleep(time.Hour)
 	}
 }
 
