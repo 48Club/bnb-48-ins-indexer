@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `account_records` (
     `tx_hash` varchar(128) NOT NULL DEFAULT '',
     `from` varchar(128) NOT NULL DEFAULT '',
     `to` varchar(128) NOT NULL DEFAULT '',
+    `input` varchar(1024) NOT NULL DEFAULT '',
     `type` tinyint NOT NULL,
     `create_at` bigint unsigned NOT NULL DEFAULT '0',
     `update_at` bigint unsigned NOT NULL DEFAULT '0',
