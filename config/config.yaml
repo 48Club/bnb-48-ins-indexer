@@ -1,0 +1,24 @@
+fans_index:
+    name: fans_index
+    port: 8888
+    route_prefix: /fans_index
+    mint_start_block: 34175788
+    mint_end_block: 34183076
+    bridge_evm_block : 999999999
+
+
+log:
+    dir: /www/fans_index/logs
+    level: info
+    max_size: 1000 #mb
+    max_backups: 100
+    max_age: 60 # days
+    compress: false
+
+mysql:
+    url: root:mysqlpasswd@tcp(mysql:3306)/c2c_app?charset=utf8mb4&parseTime=True&loc=Local
+    prefix: ""
+    max_idle_conns: 10
+    max_open_conns: 50
+    conn_max_lifetime: 60
+    slow_threshold: 3

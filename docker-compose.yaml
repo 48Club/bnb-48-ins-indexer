@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+  fans_index:
+    build:
+      context: .
+      dockerfile: ./docker/fans_index/Dockerfile
+    restart: always
+    ports:
+      - "0.0.0.0:8888:8888"
+    volumes:
+      - ./config:/www/fans_index/config
+      - ./logs/fans_index:/www/fans_index/logs/fans_index
+    privileged: true
+    networks:
+      - fans_index
+    links:
+      - mysql
+    depends_on:
+      - mysql
+
+  mysql:
+    image: "mysql:8.0.29"
+    environment:
+      MYSQL_ROOT_PASSWORD: e7ruIidkTffd_fsdl!.3
+      MYSQL_ROOT_HOST: "%"
+    restart: always
+    command: ["--default-authentication-plugin","mysql_native_password"]
+    ports:
+      - "0.0.0.0:32089:3306"
+    networks:
+      - fans_index
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ../data/fans_index/mysql/conf:/etc/mysql/conf.d
+      - ../data/fans_index/mysql/data:/var/lib/mysql
+      - ../data/fans_index/mysql/logs:/var/log/mysql
+      - ./scripts/sql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+
+networks:
+  fans_index:
+    driver: bridge
