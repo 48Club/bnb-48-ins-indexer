@@ -19,7 +19,6 @@ type AccountRecordsModel struct {
 	To       string `json:"to"`
 	Input    string `json:"input"`
 	Type     uint8  `json:"type"`
-	State    uint8  `json:"state"`
 	CreateAt int64  `json:"create_at"`
 	UpdateAt int64  `json:"update_at"`
 	DeleteAt int64  `json:"delete_at"`
