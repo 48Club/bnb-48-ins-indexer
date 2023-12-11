@@ -109,7 +109,7 @@ func init() {
 	_config = _conf
 }
 
-func SaveETHConfig(blockNumber uint64) error {
+func SaveBSCConfig(blockNumber uint64) error {
 	bsc := _config.BscIndex
 	bsc.ScanBlock = blockNumber + 1
 

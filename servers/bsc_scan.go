@@ -52,7 +52,7 @@ func (s *BscScanService) Scan() error {
 		log.Sugar.Infof("currentScanBlock: %d\n", block)
 		block++
 
-		if err = config.SaveETHConfig(block); err != nil {
+		if err = config.SaveBSCConfig(block); err != nil {
 			return err
 		}
 	}
