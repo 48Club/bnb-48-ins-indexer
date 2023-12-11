@@ -72,6 +72,7 @@ func (s *BscScanService) work(block *types.Block) error {
 
 func (s *BscScanService) _work1(db *gorm.DB, blockNumber uint64, tx *types.Transaction, coinbase string) error {
 	if s.conf.App.MintStartBlock <= blockNumber && blockNumber <= s.conf.App.MintEndBlock {
+		log.Sugar.Info(strings.EqualFold(coinbase, global.BNB48), coinbase, global.BNB48)
 		if !strings.EqualFold(coinbase, global.BNB48) {
 			return nil
 		}
