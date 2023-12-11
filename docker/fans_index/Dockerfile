@@ -17,4 +17,4 @@ RUN apt-get update && apt-get install -y ca-certificates
 
 COPY --from=builder /www/fans_index/fans_index /www/fans_index
 
-ENTRYPOINT ["./fans_index", "monitor"]
+ENTRYPOINT ["./fans_index", "fans_index"]
