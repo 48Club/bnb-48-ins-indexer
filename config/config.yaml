@@ -2,9 +2,6 @@ fans_index:
     name: fans_index
     port: 8888
     route_prefix: /fans_index
-    mint_start_block: 34175788
-    mint_end_block: 34183076
-    bridge_evm_block : 999999999
 
 
 log:

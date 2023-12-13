@@ -11,6 +11,7 @@ import (
 	"github.com/jwrookie/fans/pkg/database"
 	"github.com/jwrookie/fans/pkg/global"
 	"github.com/jwrookie/fans/pkg/log"
+	bnb48types "github.com/jwrookie/fans/pkg/types"
 	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
 	"math/big"
@@ -21,20 +22,72 @@ import (
 type BscScanService struct {
 	account        dao.IAccount
 	accountRecords dao.IAccountRecords
-	accountHash    dao.IAccountHash
+	accountWallet  dao.IAccountWallet
+	inscriptionDao dao.IInscription
+	inscriptions   map[string]inscription // tick-hash : inscription
 	conf           config.Config
+}
+
+type inscription struct {
+	Id       uint64
+	Miners   map[string]struct{}
+	Max      *big.Int
+	Lim      *big.Int
+	Minted   *big.Int
+	Tick     string
+	TickHash string
 }
 
 func NewBscScanService() *BscScanService {
 	return &BscScanService{
 		account:        &dao.AccountHandler{},
 		accountRecords: &dao.AccountRecordsHandler{},
-		accountHash:    &dao.AccountHashHandler{},
+		accountWallet:  &dao.AccountWalletHandler{},
+		inscriptionDao: &dao.InscriptionHandler{},
 		conf:           config.GetConfig(),
 	}
 }
 
+func (s *BscScanService) init() error {
+	inscs, err := s.inscriptionDao.Find(database.Mysql())
+	if err != nil {
+		return err
+	}
+
+	for _, ele := range inscs {
+		var (
+			insc   inscription
+			miners = make(map[string]struct{})
+		)
+		insc.Id = ele.Id
+		insc.Tick = ele.Tick
+		insc.TickHash = ele.TickHash
+		if insc.Max, err = utils.StringToBigint(ele.Max); err != nil {
+			return err
+		}
+		if insc.Minted, err = utils.StringToBigint(ele.Minted); err != nil {
+			return err
+		}
+		if insc.Lim, err = utils.StringToBigint(ele.Lim); err != nil {
+			return err
+		}
+
+		for _, ele := range strings.Split(ele.Miners, ",") {
+			miners[ele] = struct{}{}
+		}
+
+		s.inscriptions[ele.TickHash] = insc
+	}
+
+	return nil
+}
+
 func (s *BscScanService) Scan() error {
+	var err error
+	if err = s.init(); err != nil {
+		return err
+	}
+
 	block := s.conf.BscIndex.ScanBlock
 
 	for {
@@ -65,14 +118,8 @@ func (s *BscScanService) work(block *types.Block) error {
 	db := database.Mysql().Begin()
 	defer db.Rollback()
 
-	if s.conf.App.MintStartBlock <= block.NumberU64() && block.NumberU64() <= s.conf.App.MintEndBlock {
-		if !strings.EqualFold(block.Coinbase().Hex(), global.BNB48) {
-			return nil
-		}
-	}
-
-	for _, tx := range block.Transactions() {
-		if err := s._work1(db, block.NumberU64(), tx); err != nil {
+	for index, tx := range block.Transactions() {
+		if err := s._work(db, block, tx, index); err != nil {
 			return err
 		}
 	}
@@ -80,187 +127,301 @@ func (s *BscScanService) work(block *types.Block) error {
 	return db.Commit().Error
 }
 
-func (s *BscScanService) _work1(db *gorm.DB, blockNumber uint64, tx *types.Transaction) error {
-	if s.conf.App.MintStartBlock <= blockNumber && blockNumber <= s.conf.App.MintEndBlock {
-		return s.mint(db, tx, blockNumber)
+func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transaction, index int) error {
+	input := common.Bytes2Hex(tx.Data())
+	if !strings.HasPrefix(input, global.BNB48Prefix) {
+		return nil
 	}
 
-	if s.conf.App.MintEndBlock <= blockNumber && blockNumber <= s.conf.App.BridgeEvmBlock {
-		return s.transfer(db, tx, blockNumber)
+	data, err := utils.InputToBNB48Inscription(input)
+	if err != nil {
+		log.Sugar.Error(err)
+		return nil
+	}
+
+	switch data.Op {
+	case "deploy":
+		if err = s.mint(db, block, tx, data, index); err != nil {
+			return err
+		}
+	case "recap":
+	case "mint":
+		if err = s.mint(db, block, tx, data, index); err != nil {
+			return err
+		}
+	case "transfer":
+		if err = s.transfer(db, block, tx, data, index); err != nil {
+			return err
+		}
+	case "burn":
+	case "approve":
+	case "transferFrom":
 	}
 
 	return nil
 }
 
-func (s *BscScanService) mint(db *gorm.DB, tx *types.Transaction, blockNumber uint64) error {
-	input := "0x" + common.Bytes2Hex(tx.Data())
-	if !strings.EqualFold(input, global.MintData) {
+func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *bnb48types.BNB48Inscription, index int) error {
+	var err error
+	txHash := strings.ToLower(tx.Hash().Hex())
+	model := &dao.InscriptionModel{
+		Tick:     insc.Tick,
+		TickHash: txHash,
+		TxIndex:  uint64(index),
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time() * 1000,
+		Decimal:  insc.Decimal,
+		Max:      insc.Max,
+		Lim:      insc.Lim,
+		Miners:   strings.Join(insc.Miners, ","),
+		Minted:   "0",
+	}
+	if model.Id, err = utils.GenSnowflakeID(); err != nil {
+		return err
+	}
+
+	if err := s.inscriptionDao.Create(db, model); err != nil {
+		return err
+	}
+
+	s.inscriptions[txHash] = inscription{
+		Id: model.Id,
+	}
+}
+
+func (s *BscScanService) recap() error {
+
+}
+
+func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
+	lim, err := utils.StringToBigint(inscription.Lim)
+	if err != nil {
+		log.Sugar.Error(tx.Hash().Hex(), err)
+		return nil
+	}
+
+	insc, ok := s.inscriptions[inscription.TickHash]
+	// not deploy
+	if !ok {
+		return nil
+	}
+	// minting ended
+	if insc.Minted.Cmp(insc.Max) >= 0 {
+		return nil
+	}
+	// lim
+	if lim.Cmp(insc.Lim) > 0 || lim.Cmp(big.NewInt(0)) < 0 {
+		return nil
+	}
+	// miners
+	_, ok = insc.Miners[block.Coinbase().Hex()]
+	if len(insc.Miners) > 0 && !ok {
 		return nil
 	}
 
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
-	model, err := s.account.SelectByAddress(db, from)
+	// account
+	account, err := s.account.SelectByAddress(db, from)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			model = &dao.AccountModel{
-				Address: from,
-			}
-			if model.Id, err = utils.GenSnowflakeID(); err != nil {
+			account = &dao.AccountModel{Address: from}
+			if account.Id, err = utils.GenSnowflakeID(); err != nil {
 				return err
 			}
-
-			if err = s.account.Create(db, model); err != nil {
+			if err = s.account.Create(db, account); err != nil {
 				return err
 			}
 		} else {
 			return err
 		}
+	}
+
+	// update accountWallet
+	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, account.Id, inscription.TickHash)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			accountWallet = &dao.AccountWalletModel{AccountId: account.Id, Tick: insc.Tick, TickHash: insc.TickHash}
+			if accountWallet.Id, err = utils.GenSnowflakeID(); err != nil {
+				return err
+			}
+			if err = s.accountWallet.Create(db, accountWallet); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	balance, err := utils.StringToBigint(accountWallet.Balance)
+	if err != nil {
+		return err
 	}
 
 	updates := map[string]interface{}{
-		"balance": model.Balance + 1,
+		"balance": new(big.Int).Add(balance, big.NewInt(1)).String(),
 	}
-
-	if err = s.account.UpdateBalance(db, model.Id, updates); err != nil {
+	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
 		return err
 	}
 
+	// add record
 	record := &dao.AccountRecordsModel{
-		Block:  blockNumber,
-		TxHash: tx.Hash().Hex(),
-		From:   from,
-		To:     strings.ToLower(tx.To().Hex()),
-		Input:  strings.ToLower(input),
-		Type:   1, // mint
+		Block:   block.NumberU64(),
+		BlockAt: block.Time() * 1000,
+		TxHash:  tx.Hash().Hex(),
+		TxIndex: uint64(index),
+		From:    from,
+		To:      strings.ToLower(tx.To().Hex()),
+		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
+		Type:    1, // mint
 	}
 	if record.Id, err = utils.GenSnowflakeID(); err != nil {
 		return err
 	}
 
 	if err = s.accountRecords.Create(db, record); err != nil {
-		return err
-	}
-
-	hash := &dao.AccountHashModel{
-		AccountId: model.Id,
-		MintHash:  tx.Hash().Hex(),
-		State:     1, // valid
-	}
-	if err = s.accountHash.Create(db, hash); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *BscScanService) transfer(db *gorm.DB, tx *types.Transaction, blockNumber uint64) error {
-	input := "0x" + common.Bytes2Hex(tx.Data())
-	if len(input) != 66 {
+func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
+	insc, ok := s.inscriptions[inscription.TickHash]
+	// not deploy
+	if !ok {
 		return nil
 	}
 
+	amt, err := s.transferForFrom(db, block, tx, inscription, index)
+	if err != nil {
+		return err
+	}
+	if amt.Cmp(big.NewInt(0)) == 0 {
+		return nil
+	}
+
+	if err = s.transferForTo(db, tx, amt, insc); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) (*big.Int, error) {
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
-	if strings.EqualFold(from, tx.To().Hex()) {
-		return nil
-	}
+	zero := new(big.Int)
 
-	// s1: select from account
+	// sub balance of tx from
 	fromAccount, err := s.account.SelectByAddress(db, from)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
+			return zero, nil
 		} else {
-			return err
+			return nil, err
 		}
 	}
 
-	if fromAccount.Balance < 1 {
-		return nil
-	}
-
-	// s2: make sure the hash has not been transferred
-	fromHash, err := s.accountHash.Select(db, &dao.AccountHashModel{
-		AccountId: fromAccount.Id,
-		MintHash:  strings.ToLower(input),
-		State:     1,
-	})
+	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
-		} else {
-			return err
-		}
+		log.Sugar.Error(tx.Hash().Hex(), err)
+		return zero, nil
 	}
 
-	// s3: update from balance
-	formUpdates := map[string]interface{}{
-		"balance": fromAccount.Balance - 1,
-	}
-
-	if err = s.account.UpdateBalance(db, fromAccount.Id, formUpdates); err != nil {
-		return err
-	}
-
-	// s4: update to balance
-	toModel, err := s.account.SelectByAddress(db, strings.ToLower(tx.To().Hex()))
+	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, fromAccount.Id, inscription.TickHash)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			toModel = &dao.AccountModel{}
-			if toModel.Id, err = utils.GenSnowflakeID(); err != nil {
-				return err
-			}
-
-			if err = s.account.Create(db, toModel); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
+		return nil, err
+	}
+	currentBalance, err := utils.StringToBigint(accountWallet.Balance)
+	if currentBalance.Cmp(amt) < 0 {
+		return zero, nil
 	}
 
-	toUpdates := map[string]interface{}{
-		"balance": toModel.Balance + 1,
+	updates := map[string]interface{}{
+		"balance": new(big.Int).Sub(currentBalance, amt).String(),
+	}
+	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
+		return nil, err
 	}
 
-	if err = s.account.UpdateBalance(db, toModel.Id, toUpdates); err != nil {
-		return err
-	}
-
-	// s5: add to hash
-	toHash := &dao.AccountHashModel{
-		AccountId: toModel.Id,
-		MintHash:  fromHash.MintHash,
-		State:     1, // valid
-	}
-	if err = s.accountHash.Create(db, toHash); err != nil {
-		return err
-	}
-
-	// s6: update from hash, make it invalid
-	fromHashUpdates := map[string]interface{}{
-		"state":     2, // invalid
-		"delete_at": time.Now().UnixMilli(),
-	}
-	if err = s.accountHash.Update(db, fromHash.Id, fromHashUpdates); err != nil {
-		return err
-	}
-
-	// s7: add from records
+	// add record for tx from
 	record := &dao.AccountRecordsModel{
-		Block:  blockNumber,
-		TxHash: tx.Hash().Hex(),
-		From:   from,
-		To:     strings.ToLower(tx.To().Hex()),
-		Input:  strings.ToLower(input),
-		Type:   2, // transfer
+		Block:   block.NumberU64(),
+		TxHash:  tx.Hash().Hex(),
+		TxIndex: uint64(index),
+		From:    from,
+		To:      strings.ToLower(tx.To().Hex()),
+		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
+		Type:    2, // transfer
 	}
 	if record.Id, err = utils.GenSnowflakeID(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = s.accountRecords.Create(db, record); err != nil {
+		return nil, err
+	}
+
+	return amt, nil
+}
+
+func (s *BscScanService) transferForTo(db *gorm.DB, tx *types.Transaction, amt *big.Int, insc inscription) error {
+	to := strings.ToLower(tx.To().Hex())
+	// account
+	account, err := s.account.SelectByAddress(db, to)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			account = &dao.AccountModel{Address: to}
+			if account.Id, err = utils.GenSnowflakeID(); err != nil {
+				return err
+			}
+			if err = s.account.Create(db, account); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	// update accountWallet
+	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, account.Id, insc.TickHash)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			accountWallet = &dao.AccountWalletModel{AccountId: account.Id, Tick: insc.Tick, TickHash: insc.TickHash}
+			if accountWallet.Id, err = utils.GenSnowflakeID(); err != nil {
+				return err
+			}
+			if err = s.accountWallet.Create(db, accountWallet); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	balance, err := utils.StringToBigint(accountWallet.Balance)
+	if err != nil {
 		return err
 	}
 
+	updates := map[string]interface{}{
+		"balance": new(big.Int).Add(balance, amt).String(),
+	}
+	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *BscScanService) burn() error {
+	return nil
+}
+
+func (s *BscScanService) approve() error {
+	return nil
+}
+
+func (s *BscScanService) transferFrom() error {
 	return nil
 }

@@ -14,7 +14,9 @@ type IAccountRecords interface {
 type AccountRecordsModel struct {
 	Id       uint64 `json:"id,string" gorm:"primaryKey"`
 	Block    uint64 `json:"block"`
+	BlockAt  uint64 `json:"block_at"`
 	TxHash   string `json:"tx_hash"`
+	TxIndex  uint64 `json:"tx_index"`
 	From     string `json:"from"`
 	To       string `json:"to"`
 	Input    string `json:"input"`

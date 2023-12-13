@@ -38,12 +38,9 @@ type IndexConfig struct {
 }
 
 type AppConfig struct {
-	Name           string `mapstructure:"name"`
-	Port           int    `mapstructure:"port"`
-	RoutePrefix    string `mapstructure:"route_prefix"`
-	MintStartBlock uint64 `mapstructure:"mint_start_block"`
-	MintEndBlock   uint64 `mapstructure:"mint_end_block"`
-	BridgeEvmBlock uint64 `mapstructure:"bridge_evm_block"`
+	Name        string `mapstructure:"name"`
+	Port        int    `mapstructure:"port"`
+	RoutePrefix string `mapstructure:"route_prefix"`
 }
 
 type Config struct {

@@ -10,13 +10,11 @@ type IAccount interface {
 	TableName() string
 	Create(db *gorm.DB, model *AccountModel) error
 	SelectByAddress(db *gorm.DB, address string) (*AccountModel, error)
-	UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error
 }
 
 type AccountModel struct {
 	Id       uint64 `json:"id,string" gorm:"primaryKey"`
 	Address  string `json:"address"`
-	Balance  uint64 `json:"balance"`
 	CreateAt int64  `json:"create_at"`
 	UpdateAt int64  `json:"update_at"`
 	DeleteAt int64  `json:"delete_at"`
@@ -56,15 +54,4 @@ func (h *AccountHandler) SelectByAddress(db *gorm.DB, address string) (*AccountM
 	}
 
 	return &model, nil
-}
-
-func (h *AccountHandler) UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error {
-	var err error
-
-	data["update_at"] = time.Now().UnixMilli()
-	if err = db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error; err != nil {
-		return err
-	}
-
-	return nil
 }
