@@ -109,8 +109,6 @@ func (s *BscScanService) Scan() error {
 		log.Sugar.Infof("currentScanBlock: %d\n", block)
 		block++
 
-		time.Sleep(time.Second * 600)
-
 		if err = config.SaveBSCConfig(block); err != nil {
 			return err
 		}
