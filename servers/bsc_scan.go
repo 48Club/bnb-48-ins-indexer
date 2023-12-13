@@ -109,6 +109,8 @@ func (s *BscScanService) Scan() error {
 		log.Sugar.Infof("currentScanBlock: %d\n", block)
 		block++
 
+		time.Sleep(time.Second * 600)
+
 		if err = config.SaveBSCConfig(block); err != nil {
 			return err
 		}
@@ -140,6 +142,8 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 		return nil
 	}
 
+	log.Sugar.Info(data)
+
 	switch data.Op {
 	case "deploy":
 	case "recap":
@@ -159,7 +163,7 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 	return nil
 }
 
-func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *bnb48types.BNB48Inscription, index int) error {
+func (s *BscScanService) deploy() error {
 	return nil
 }
 
