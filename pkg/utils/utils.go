@@ -32,6 +32,10 @@ func GetTxFrom(tx *types.Transaction) common.Address {
 }
 
 func StringToBigint(data string) (*big.Int, error) {
+	if data == "" {
+		data = "0"
+	}
+
 	bigint, ok := new(big.Int).SetString(data, 10)
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("%s can not parse to bigint", data))
