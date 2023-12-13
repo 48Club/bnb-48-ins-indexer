@@ -141,9 +141,6 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 
 	switch data.Op {
 	case "deploy":
-		if err = s.mint(db, block, tx, data, index); err != nil {
-			return err
-		}
 	case "recap":
 	case "mint":
 		if err = s.mint(db, block, tx, data, index); err != nil {
@@ -162,35 +159,11 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 }
 
 func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *bnb48types.BNB48Inscription, index int) error {
-	var err error
-	txHash := strings.ToLower(tx.Hash().Hex())
-	model := &dao.InscriptionModel{
-		Tick:     insc.Tick,
-		TickHash: txHash,
-		TxIndex:  uint64(index),
-		Block:    block.NumberU64(),
-		BlockAt:  block.Time() * 1000,
-		Decimal:  insc.Decimal,
-		Max:      insc.Max,
-		Lim:      insc.Lim,
-		Miners:   strings.Join(insc.Miners, ","),
-		Minted:   "0",
-	}
-	if model.Id, err = utils.GenSnowflakeID(); err != nil {
-		return err
-	}
-
-	if err := s.inscriptionDao.Create(db, model); err != nil {
-		return err
-	}
-
-	s.inscriptions[txHash] = inscription{
-		Id: model.Id,
-	}
+	return nil
 }
 
 func (s *BscScanService) recap() error {
-
+	return nil
 }
 
 func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
