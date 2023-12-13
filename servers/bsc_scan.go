@@ -129,7 +129,7 @@ func (s *BscScanService) work(block *types.Block) error {
 }
 
 func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transaction, index int) error {
-	input := common.Bytes2Hex(tx.Data())
+	input := "0x" + common.Bytes2Hex(tx.Data())
 	if !strings.HasPrefix(input, global.BNB48Prefix) {
 		return nil
 	}
