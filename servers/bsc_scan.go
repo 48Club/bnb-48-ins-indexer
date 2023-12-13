@@ -44,6 +44,7 @@ func NewBscScanService() *BscScanService {
 		accountRecords: &dao.AccountRecordsHandler{},
 		accountWallet:  &dao.AccountWalletHandler{},
 		inscriptionDao: &dao.InscriptionHandler{},
+		inscriptions:   make(map[string]inscription),
 		conf:           config.GetConfig(),
 	}
 }
