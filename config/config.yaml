@@ -2,6 +2,7 @@ fans_index:
     name: fans_index
     port: 8888
     route_prefix: /fans_index
+    bsc_rpc: https://rpc.ankr.com/bsc/ace69abcacd8190d01f7c729847a286095340c412af9e4fff3c20547235d0364
 
 
 log:

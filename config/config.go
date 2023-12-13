@@ -41,6 +41,7 @@ type AppConfig struct {
 	Name        string `mapstructure:"name"`
 	Port        int    `mapstructure:"port"`
 	RoutePrefix string `mapstructure:"route_prefix"`
+	BscRpc      string `mapstructure:"bsc_rpc"`
 }
 
 type Config struct {
