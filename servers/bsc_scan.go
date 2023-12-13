@@ -279,7 +279,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
-	if err = s.transferForTo(db, tx, amt, insc, inscription.To); err != nil {
+	if err = s.transferForTo(db, amt, insc, inscription.To); err != nil {
 		return err
 	}
 
@@ -343,7 +343,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	return amt, nil
 }
 
-func (s *BscScanService) transferForTo(db *gorm.DB, tx *types.Transaction, amt *big.Int, insc inscription, to string) error {
+func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc inscription, to string) error {
 	// account
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
