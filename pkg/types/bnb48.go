@@ -5,6 +5,7 @@ type BNB48Inscription struct {
 	Op       string   `json:"op"`
 	Tick     string   `json:"tick"`
 	TickHash string   `json:"tick_hash"`
+	To       string   `json:"to"`
 	Decimal  uint8    `json:"decimal"`
 	Max      string   `json:"max"`
 	Lim      string   `json:"lim"`

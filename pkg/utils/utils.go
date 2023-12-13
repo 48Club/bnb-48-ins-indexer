@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	bnb48types "github.com/jwrookie/fans/pkg/types"
 	"math/big"
+	"regexp"
 	"strings"
 )
 
@@ -61,5 +62,17 @@ func InputToBNB48Inscription(str string) (*bnb48types.BNB48Inscription, error) {
 		return obj, nil
 	} else {
 		return nil, fmt.Errorf("invalid str")
+	}
+}
+
+func IsValidERCAddress(address interface{}) bool {
+	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
+	switch v := address.(type) {
+	case string:
+		return re.MatchString(v)
+	case common.Address:
+		return re.MatchString(v.Hex())
+	default:
+		return false
 	}
 }

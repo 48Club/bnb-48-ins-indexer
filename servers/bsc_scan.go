@@ -267,6 +267,10 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
+	if !utils.IsValidERCAddress(inscription.To) {
+		return nil
+	}
+
 	amt, err := s.transferForFrom(db, block, tx, inscription, index)
 	if err != nil {
 		return err
@@ -275,7 +279,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
-	if err = s.transferForTo(db, tx, amt, insc); err != nil {
+	if err = s.transferForTo(db, tx, amt, insc, inscription.To); err != nil {
 		return err
 	}
 
@@ -339,8 +343,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	return amt, nil
 }
 
-func (s *BscScanService) transferForTo(db *gorm.DB, tx *types.Transaction, amt *big.Int, insc inscription) error {
-	to := strings.ToLower(tx.To().Hex())
+func (s *BscScanService) transferForTo(db *gorm.DB, tx *types.Transaction, amt *big.Int, insc inscription, to string) error {
 	// account
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
