@@ -40,6 +40,8 @@ func getConfigLogArgs(filename string) (zapcore.WriteSyncer, zapcore.Level) {
 		level = zap.WarnLevel
 	case "", "INFO", "info":
 		level = zap.InfoLevel
+	case "DEBUG", "debug":
+		level = zap.DebugLevel
 	}
 
 	var syncers []zapcore.WriteSyncer
@@ -54,7 +56,7 @@ func getConfigLogArgs(filename string) (zapcore.WriteSyncer, zapcore.Level) {
 			LocalTime:  true,
 		}
 		_ = logger
-		//syncers = append(syncers, zapcore.AddSync(logger))
+		syncers = append(syncers, zapcore.AddSync(logger))
 	}
 
 	syncers = append(syncers, os.Stdout)

@@ -109,8 +109,6 @@ func (s *BscScanService) Scan() error {
 		log.Sugar.Infof("currentScanBlock: %d\n", block)
 		block++
 
-		time.Sleep(time.Second * 600)
-
 		if err = config.SaveBSCConfig(block); err != nil {
 			return err
 		}
@@ -156,6 +154,8 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 	case "burn":
 	case "approve":
 	case "transferFrom":
+	default:
+		log.Sugar.Debugf("tx: %s, error: can not support %s op", tx.Hash().Hex(), data.Op)
 	}
 
 	return nil
@@ -172,26 +172,30 @@ func (s *BscScanService) recap() error {
 func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
 	lim, err := utils.StringToBigint(inscription.Lim)
 	if err != nil {
-		log.Sugar.Error(tx.Hash().Hex(), err)
+		log.Sugar.Debugf("tx: %s, error: %s, lim: %s", tx.Hash().Hex(), "lim", inscription.Lim)
 		return nil
 	}
 
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "not deploy")
 		return nil
 	}
 	// minting ended
 	if insc.Minted.Cmp(insc.Max) >= 0 {
+		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "minting ended")
 		return nil
 	}
 	// lim
 	if lim.Cmp(insc.Lim) > 0 || lim.Cmp(big.NewInt(0)) < 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, want: 0 < lim < %d, get: %d", tx.Hash().Hex(), "lim", insc.Lim, lim)
 		return nil
 	}
 	// miners
-	_, ok = insc.Miners[block.Coinbase().Hex()]
+	_, ok = insc.Miners[strings.ToLower(block.Coinbase().Hex())]
 	if len(insc.Miners) > 0 && !ok {
+		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
 		return nil
 	}
 
@@ -266,10 +270,12 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s, tick-hash: %s", tx.Hash().Hex(), "not deploy", inscription.TickHash)
 		return nil
 	}
 
 	if !utils.IsValidERCAddress(inscription.To) {
+		log.Sugar.Debugf("tx: %s, error: %s, to: %s", tx.Hash().Hex(), "invalid to", inscription.To)
 		return nil
 	}
 
@@ -292,20 +298,26 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	zero := new(big.Int)
 
+	amt, err := utils.StringToBigint(inscription.Amt)
+	if err != nil {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
+		return zero, nil
+	}
+
+	if amt.Cmp(big.NewInt(0)) == 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
+		return zero, nil
+	}
+
 	// sub balance of tx from
 	fromAccount, err := s.account.SelectByAddress(db, from)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "from account not found")
 			return zero, nil
 		} else {
 			return nil, err
 		}
-	}
-
-	amt, err := utils.StringToBigint(inscription.Amt)
-	if err != nil {
-		log.Sugar.Error(tx.Hash().Hex(), err)
-		return zero, nil
 	}
 
 	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, fromAccount.Id, inscription.TickHash)
@@ -314,6 +326,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	}
 	currentBalance, err := utils.StringToBigint(accountWallet.Balance)
 	if currentBalance.Cmp(amt) < 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, current balance: %s, need balance:%s", tx.Hash().Hex(), "insufficient balance", accountWallet.Balance, inscription.Amt)
 		return zero, nil
 	}
 

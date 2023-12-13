@@ -32,13 +32,17 @@ func GetTxFrom(tx *types.Transaction) common.Address {
 }
 
 func StringToBigint(data string) (*big.Int, error) {
+	if strings.HasPrefix(data, "-") {
+		return nil, errors.New(fmt.Sprintf("%s invaild, can not support neg", data))
+	}
+
 	if data == "" {
 		data = "0"
 	}
 
 	bigint, ok := new(big.Int).SetString(data, 10)
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("%s can not parse to bigint", data))
+		return nil, errors.New(fmt.Sprintf("%s invaild, can not parse to bigint", data))
 	}
 
 	return bigint, nil
