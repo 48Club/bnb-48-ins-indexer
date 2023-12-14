@@ -11,7 +11,7 @@ services:
       - ./logs:/www/index/logs
     privileged: true
     networks:
-      - bnb48_index
+      - bnb48
     links:
       - mysql
     depends_on:
