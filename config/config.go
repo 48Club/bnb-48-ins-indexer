@@ -45,7 +45,7 @@ type AppConfig struct {
 }
 
 type Config struct {
-	App      AppConfig   `yaml:"fans_index"`
+	App      AppConfig   `yaml:"bnb48_index"`
 	BscIndex IndexConfig `yaml:"bsc"`
 	Log      LogConfig   `yaml:"log"`
 	Mysql    MysqlConfig `yaml:"mysql"`

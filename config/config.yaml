@@ -1,12 +1,12 @@
-fans_index:
-    name: fans_index
+bnb48_index:
+    name: bnb48_index
     port: 8888
     route_prefix: /bnb48_index
     bsc_rpc: https://rpc.ankr.com/bsc/ace69abcacd8190d01f7c729847a286095340c412af9e4fff3c20547235d0364
 
 
 log:
-    dir: /www/fans_index/logs
+    dir: /www/bnb48_index/logs
     level: debug
     max_size: 1000 #mb
     max_backups: 100
