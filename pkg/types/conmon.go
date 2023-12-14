@@ -3,7 +3,7 @@ package types
 import "github.com/jwrookie/fans/dao"
 
 type CommonListCond struct {
-	Page     int64 `json:"page" binding:"required"`
+	Page     int64 `json:"page"`
 	PageSize int8  `json:"page_size"  binding:"required"`
 }
 
