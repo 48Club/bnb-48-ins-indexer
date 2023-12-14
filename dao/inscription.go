@@ -1,7 +1,6 @@
 package dao
 
 import (
-	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
 	"time"
 )
@@ -10,6 +9,7 @@ type IInscription interface {
 	TableName() string
 	Create(db *gorm.DB, model *InscriptionModel) error
 	Find(db *gorm.DB) ([]*InscriptionModel, error)
+	Count(db *gorm.DB) (int64, error)
 }
 
 type InscriptionModel struct {
@@ -36,13 +36,28 @@ func (h *InscriptionHandler) TableName() string {
 	return "inscription"
 }
 
+func (h *InscriptionHandler) Count(db *gorm.DB) (int64, error) {
+	var (
+		res int64
+		err error
+	)
+
+	db = db.Where("delete_at = 0")
+
+	if err = db.Table(h.TableName()).Count(&res).Error; err != nil {
+		return 0, err
+	}
+
+	return res, nil
+}
+
 func (h *InscriptionHandler) Find(db *gorm.DB) ([]*InscriptionModel, error) {
 	var (
 		datas []*InscriptionModel
 		err   error
 	)
 
-	db = db.Where("delete_at = ?", 0)
+	db = db.Where("delete_at = 0")
 
 	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
 		return nil, err
@@ -56,7 +71,7 @@ func (h *InscriptionHandler) Create(db *gorm.DB, model *InscriptionModel) error 
 
 	// init
 	if model.Id == 0 {
-		if model.Id, err = utils.GenSnowflakeID(); err != nil {
+		if model.Id, err = GenSnowflakeID(); err != nil {
 			return err
 		}
 	}

@@ -1,7 +1,6 @@
 package dao
 
 import (
-	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
 	"time"
 )
@@ -32,7 +31,7 @@ func (h *AccountHandler) Create(db *gorm.DB, model *AccountModel) error {
 
 	// init
 	if model.Id == 0 {
-		if model.Id, err = utils.GenSnowflakeID(); err != nil {
+		if model.Id, err = GenSnowflakeID(); err != nil {
 			return err
 		}
 	}

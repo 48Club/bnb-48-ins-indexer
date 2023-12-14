@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS `account` (
 CREATE TABLE IF NOT EXISTS `account_wallet` (
     `id` bigint unsigned NOT NULL,
     `account_id` bigint unsigned NOT NULL,
+    `address` varchar(42) NOT NULL DEFAULT '',
     `tick` varchar(42) NOT NULL DEFAULT '',
     `tick_hash` varchar(66) NOT NULL DEFAULT '',
     `balance` varchar(128) NOT NULL DEFAULT '0',

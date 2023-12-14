@@ -6,7 +6,7 @@ fans_index:
 
 
 log:
-    dir: /www/fans_index/logs
+    dir: /Users/wei/Desktop/fans_index/logs
     level: debug
     max_size: 1000 #mb
     max_backups: 100

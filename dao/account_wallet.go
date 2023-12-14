@@ -1,7 +1,6 @@
 package dao
 
 import (
-	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
 	"time"
 )
@@ -11,11 +10,14 @@ type IAccountWallet interface {
 	Create(db *gorm.DB, model *AccountWalletModel) error
 	UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error
 	SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error)
+	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
+	Count(db *gorm.DB) (int64, error)
 }
 
 type AccountWalletModel struct {
 	Id        uint64 `json:"id,string" gorm:"primaryKey"`
 	AccountId uint64 `json:"account_id,string"`
+	Address   string `json:"address"`
 	Tick      string `json:"tick"`
 	TickHash  string `json:"tick_hash"`
 	Balance   string `json:"balance"`
@@ -29,6 +31,36 @@ type AccountWalletHandler struct {
 
 func (h *AccountWalletHandler) TableName() string {
 	return "account_wallet"
+}
+
+func (h *AccountWalletHandler) Count(db *gorm.DB) (int64, error) {
+	var (
+		res int64
+		err error
+	)
+
+	db = db.Where("delete_at = 0")
+
+	if err = db.Table(h.TableName()).Count(&res).Error; err != nil {
+		return 0, err
+	}
+
+	return res, nil
+}
+
+func (h *AccountWalletHandler) FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error) {
+	var (
+		datas []*AccountWalletModel
+		err   error
+	)
+
+	db = db.Where("delete_at = 0 and tick_hash = ?", tickHash)
+
+	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
+		return nil, err
+	}
+
+	return datas, nil
 }
 
 func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error) {
@@ -49,7 +81,7 @@ func (h *AccountWalletHandler) Create(db *gorm.DB, model *AccountWalletModel) er
 
 	// init
 	if model.Id == 0 {
-		if model.Id, err = utils.GenSnowflakeID(); err != nil {
+		if model.Id, err = GenSnowflakeID(); err != nil {
 			return err
 		}
 	}

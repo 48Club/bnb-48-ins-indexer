@@ -1,7 +1,6 @@
 package dao
 
 import (
-	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
 	"time"
 )
@@ -9,6 +8,8 @@ import (
 type IAccountRecords interface {
 	TableName() string
 	Create(db *gorm.DB, model *AccountRecordsModel) error
+	Find(db *gorm.DB) ([]*AccountRecordsModel, error)
+	Count(db *gorm.DB) (int64, error)
 }
 
 type AccountRecordsModel struct {
@@ -38,7 +39,7 @@ func (h *AccountRecordsHandler) Create(db *gorm.DB, model *AccountRecordsModel) 
 
 	// init
 	if model.Id == 0 {
-		if model.Id, err = utils.GenSnowflakeID(); err != nil {
+		if model.Id, err = GenSnowflakeID(); err != nil {
 			return err
 		}
 	}
@@ -47,4 +48,34 @@ func (h *AccountRecordsHandler) Create(db *gorm.DB, model *AccountRecordsModel) 
 	model.UpdateAt = model.CreateAt
 
 	return db.Table(h.TableName()).Create(model).Error
+}
+
+func (h *AccountRecordsHandler) Find(db *gorm.DB) ([]*AccountRecordsModel, error) {
+	var (
+		datas []*AccountRecordsModel
+		err   error
+	)
+
+	db = db.Where("delete_at = 0")
+
+	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
+		return nil, err
+	}
+
+	return datas, nil
+}
+
+func (h *AccountRecordsHandler) Count(db *gorm.DB) (int64, error) {
+	var (
+		res int64
+		err error
+	)
+
+	db = db.Where("delete_at = 0")
+
+	if err = db.Table(h.TableName()).Count(&res).Error; err != nil {
+		return 0, err
+	}
+
+	return res, nil
 }

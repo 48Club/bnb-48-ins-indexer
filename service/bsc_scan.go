@@ -205,7 +205,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			account = &dao.AccountModel{Address: from}
-			if account.Id, err = utils.GenSnowflakeID(); err != nil {
+			if account.Id, err = dao.GenSnowflakeID(); err != nil {
 				return err
 			}
 			if err = s.account.Create(db, account); err != nil {
@@ -220,8 +220,8 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, account.Id, inscription.TickHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			accountWallet = &dao.AccountWalletModel{AccountId: account.Id, Tick: insc.Tick, TickHash: insc.TickHash}
-			if accountWallet.Id, err = utils.GenSnowflakeID(); err != nil {
+			accountWallet = &dao.AccountWalletModel{AccountId: account.Id, Tick: insc.Tick, TickHash: insc.TickHash, Address: account.Address}
+			if accountWallet.Id, err = dao.GenSnowflakeID(); err != nil {
 				return err
 			}
 			if err = s.accountWallet.Create(db, accountWallet); err != nil {
@@ -255,7 +255,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
 		Type:    1, // mint
 	}
-	if record.Id, err = utils.GenSnowflakeID(); err != nil {
+	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return err
 	}
 
@@ -347,7 +347,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
 		Type:    2, // transfer
 	}
-	if record.Id, err = utils.GenSnowflakeID(); err != nil {
+	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return nil, err
 	}
 
@@ -364,7 +364,7 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc inscripti
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			account = &dao.AccountModel{Address: to}
-			if account.Id, err = utils.GenSnowflakeID(); err != nil {
+			if account.Id, err = dao.GenSnowflakeID(); err != nil {
 				return err
 			}
 			if err = s.account.Create(db, account); err != nil {
@@ -379,8 +379,8 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc inscripti
 	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, account.Id, insc.TickHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			accountWallet = &dao.AccountWalletModel{AccountId: account.Id, Tick: insc.Tick, TickHash: insc.TickHash}
-			if accountWallet.Id, err = utils.GenSnowflakeID(); err != nil {
+			accountWallet = &dao.AccountWalletModel{AccountId: account.Id, Tick: insc.Tick, TickHash: insc.TickHash, Address: account.Address}
+			if accountWallet.Id, err = dao.GenSnowflakeID(); err != nil {
 				return err
 			}
 			if err = s.accountWallet.Create(db, accountWallet); err != nil {
