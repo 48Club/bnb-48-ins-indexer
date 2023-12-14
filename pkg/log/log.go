@@ -2,17 +2,17 @@ package log
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/jwrookie/fans/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
+	"io"
 )
 
 var (
 	Log   *zap.Logger
 	Sugar *zap.SugaredLogger
+	Write io.Writer
 )
 
 func Init(filename string) {
@@ -55,11 +55,11 @@ func getConfigLogArgs(filename string) (zapcore.WriteSyncer, zapcore.Level) {
 			Compress:   log.Compress,
 			LocalTime:  true,
 		}
-		_ = logger
+		Write = logger
 		syncers = append(syncers, zapcore.AddSync(logger))
 	}
 
-	syncers = append(syncers, os.Stdout)
+	//syncers = append(syncers, os.Stdout)
 	ws := zapcore.NewMultiWriteSyncer(syncers...)
 
 	return ws, level

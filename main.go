@@ -1,18 +1,20 @@
 package main
 
 import (
-	"github.com/jwrookie/fans/cmd/fans_index"
+	"github.com/jwrookie/fans/cmd/api"
+	"github.com/jwrookie/fans/cmd/index"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 func newCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "fans",
-		Short: "fans",
+		Use:   "bnb48",
+		Short: "bnb48",
 	}
 
-	cmd.AddCommand(fans_index.NewCommand())
+	cmd.AddCommand(index.NewCommand())
+	cmd.AddCommand(api.NewCommand())
 	return cmd
 }
 

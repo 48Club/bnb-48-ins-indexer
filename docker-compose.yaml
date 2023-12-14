@@ -1,16 +1,16 @@
 version: '3'
 
 services:
-  fans_index:
+  index:
     build:
       context: .
-      dockerfile: ./docker/fans_index/Dockerfile
+      dockerfile: ./docker/index/Dockerfile
     restart: always
     ports:
       - "0.0.0.0:8888:8888"
     volumes:
-      - ./config:/www/fans_index/config
-      - ./logs:/www/fans_index/logs
+      - ./config:/www/index/config
+      - ./logs:/www/index/logs
     privileged: true
     networks:
       - fans_index

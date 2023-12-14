@@ -1,6 +1,6 @@
-CREATE DATABASE IF NOT EXISTS `fans_index` CHARACTER SET = utf8mb4;
+CREATE DATABASE IF NOT EXISTS `bnb48_inscription` CHARACTER SET = utf8mb4;
 
-USE `fans_index`;
+USE `bnb48_inscription`;
 
 CREATE TABLE IF NOT EXISTS `account` (
     `id` bigint unsigned NOT NULL,
