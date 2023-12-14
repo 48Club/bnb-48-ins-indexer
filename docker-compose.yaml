@@ -7,8 +7,8 @@ services:
       dockerfile: ./docker/index/Dockerfile
     restart: always
     volumes:
-      - ./config:/www/bnb48_index/config
-      - ./logs/index/:/www/bnb48_index/logs
+      - ./config:/www/index/config
+      - ./logs/index/:/www/index/logs
     privileged: true
     networks:
       - bnb48
@@ -25,8 +25,8 @@ services:
     ports:
       - "0.0.0.0:8888:8888"
     volumes:
-      - ./config:/www/bnb48_index/config
-      - ./logs/api/:/www/bnb48_index/logs
+      - ./config:/www/api/config
+      - ./logs/api/:/www/api/logs
     privileged: true
     networks:
       - bnb48
