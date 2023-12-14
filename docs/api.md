@@ -134,7 +134,7 @@ response(json)
                 "tx_index": int,
                 "block": int,
                 "block_at": int,
-                "decimal": int,
+                "decimals": int,
                 "max": int,
                 "lim": string,
                 "miners": string,
