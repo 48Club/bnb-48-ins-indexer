@@ -9,7 +9,7 @@ request body(json)
 ```
 {
 "page" int
-"page_size" int (required, 0~256)
+"page_size" int (required, 1~256)
 }
 ```
 
@@ -61,7 +61,7 @@ request body(json)
 ```
 {
 "page" int
-"page_size" int (required, 0~256)
+"page_size" int (required, 1~256)
 }
 ```
 
@@ -112,7 +112,7 @@ request body(json)
 ```
 {
 "page" int
-"page_size" int (required, 0~256)
+"page_size" int (required, 1~256)
 }
 ```
 
