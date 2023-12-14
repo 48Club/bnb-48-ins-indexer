@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 	"io"
+	"os"
 )
 
 var (
@@ -59,7 +60,7 @@ func getConfigLogArgs(filename string) (zapcore.WriteSyncer, zapcore.Level) {
 		syncers = append(syncers, zapcore.AddSync(logger))
 	}
 
-	//syncers = append(syncers, os.Stdout)
+	syncers = append(syncers, os.Stdout)
 	ws := zapcore.NewMultiWriteSyncer(syncers...)
 
 	return ws, level
