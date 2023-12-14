@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   index:
@@ -7,8 +7,8 @@ services:
       dockerfile: ./docker/index/Dockerfile
     restart: always
     volumes:
-      - ./config:/www/index/config
-      - ./logs:/www/index/logs
+      - ./config:/www/bnb48_index/config
+      - ./logs/index/:/www/bnb48_index/logs
     privileged: true
     networks:
       - bnb48
@@ -25,8 +25,8 @@ services:
     ports:
       - "0.0.0.0:8888:8888"
     volumes:
-      - ./config:/www/api/config
-      - ./logs:/www/api/logs
+      - ./config:/www/bnb48_index/config
+      - ./logs/api/:/www/bnb48_index/logs
     privileged: true
     networks:
       - bnb48
@@ -41,7 +41,7 @@ services:
       MYSQL_ROOT_PASSWORD: mysqlpasswd
       MYSQL_ROOT_HOST: "%"
     restart: always
-    command: ["--default-authentication-plugin","mysql_native_password"]
+    command: ["--default-authentication-plugin", "mysql_native_password"]
     ports:
       - "0.0.0.0:32089:3306"
     networks:

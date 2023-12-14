@@ -3,11 +3,12 @@ package config
 import (
 	"bytes"
 	_ "embed"
-	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"path"
 	"runtime"
+
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed config.yaml
@@ -98,7 +99,7 @@ func init() {
 	}
 
 	{
-		appConf := conf.Sub("fans_index")
+		appConf := conf.Sub("bnb48_index")
 		if err := appConf.Unmarshal(&_conf.App); err != nil {
 			panic(err)
 		}
@@ -121,7 +122,7 @@ func SaveBSCConfig(blockNumber uint64) error {
 		return err
 	}
 
-	if err = ioutil.WriteFile("./config/bsc.yaml", data, 0666); err != nil {
+	if err = ioutil.WriteFile("./config/bsc.yaml", data, 0o666); err != nil {
 		return err
 	}
 
