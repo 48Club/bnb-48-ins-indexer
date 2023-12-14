@@ -1,8 +1,9 @@
 package dao
 
 import (
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type IInscription interface {
@@ -19,7 +20,7 @@ type InscriptionModel struct {
 	TxIndex  uint64 `json:"tx_index"`
 	Block    uint64 `json:"block"`
 	BlockAt  uint64 `json:"block_at"`
-	Decimal  uint8  `json:"decimal"`
+	Decimals uint8  `json:"decimals"`
 	Max      string `json:"max"`
 	Lim      string `json:"lim"`
 	Miners   string `json:"miners"`
@@ -29,8 +30,7 @@ type InscriptionModel struct {
 	DeleteAt int64  `json:"delete_at"`
 }
 
-type InscriptionHandler struct {
-}
+type InscriptionHandler struct{}
 
 func (h *InscriptionHandler) TableName() string {
 	return "inscription"

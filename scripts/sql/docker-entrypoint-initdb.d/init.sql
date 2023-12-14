@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `inscription` (
     `tx_index` int unsigned NOT NULL,
     `block` bigint NOT NULL DEFAULT '0',
     `block_at` bigint unsigned NOT NULL DEFAULT '0',
-    `decimal` tinyint unsigned NOT NULL,
+    `decimals` tinyint unsigned NOT NULL,
     `max` varchar(128) NOT NULL DEFAULT '0',
     `lim` varchar(128) NOT NULL DEFAULT '0',
     `miners` varchar(2048) NOT NULL DEFAULT '',
@@ -62,4 +62,4 @@ CREATE TABLE IF NOT EXISTS `account_records` (
     UNIQUE KEY `tx_hash` (`tx_hash`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
-INSERT INTO inscription (id,tick,tick_hash,tx_index,block,block_at,`decimal`,`max`,lim,miners,minted,create_at,update_at,delete_at)values("1","fans","0xd893ca77b3122cb6c480da7f8a12cb82e19542076f5895f21446258dc473a7c2","237","34175786","1702042086","1","1000000","1","0x72b61c6014342d914470eC7aC2975bE345796c2b","1000000","1702042086000","0","0");
+INSERT INTO inscription (id,tick,tick_hash,tx_index,block,block_at,`decimals`,`max`,lim,miners,minted,create_at,update_at,delete_at)values("1","fans","0xd893ca77b3122cb6c480da7f8a12cb82e19542076f5895f21446258dc473a7c2","237","34175786","1702042086","8","1000000","1","0x72b61c6014342d914470eC7aC2975bE345796c2b","1000000","1702042086000","0","0");
