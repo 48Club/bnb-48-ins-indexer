@@ -20,15 +20,15 @@ type ListAccountWalletReq struct {
 
 type ListAccountWalletRsp struct {
 	CommonListRsp
-	List []*dao.AccountWalletModel
+	List []*dao.AccountWalletModel `json:"list"`
 }
 
 type ListRecordRsp struct {
 	CommonListRsp
-	List []*dao.AccountRecordsModel
+	List []*dao.AccountRecordsModel `json:"list"`
 }
 
 type ListInscriptionRsp struct {
 	CommonListRsp
-	List []*dao.InscriptionModel
+	List []*dao.InscriptionModel `json:"list"`
 }
