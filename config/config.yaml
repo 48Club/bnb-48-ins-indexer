@@ -1,22 +1,21 @@
 bnb48_index:
-    name: bnb48_index
-    port: 8888
-    route_prefix: /bnb48_index
-    bsc_rpc: https://rpc.ankr.com/bsc/ace69abcacd8190d01f7c729847a286095340c412af9e4fff3c20547235d0364
-
+  name: bnb48_index
+  port: 8888
+  route_prefix: /bnb48_index
+  bsc_rpc: https://rpc.ankr.com/bsc/ace69abcacd8190d01f7c729847a286095340c412af9e4fff3c20547235d0364
 
 log:
-    dir: /www/bnb48_index/logs
-    level: debug
-    max_size: 1000 #mb
-    max_backups: 100
-    max_age: 60 # days
-    compress: false
+  dir: /www/logs
+  level: debug
+  max_size: 1000 #mb
+  max_backups: 100
+  max_age: 60 # days
+  compress: false
 
 mysql:
-    url: root:mysqlpasswd@tcp(mysql:3306)/bnb48_inscription?charset=utf8mb4&parseTime=True&loc=Local
-    prefix: ""
-    max_idle_conns: 10
-    max_open_conns: 50
-    conn_max_lifetime: 60
-    slow_threshold: 3
+  url: root:mysqlpasswd@tcp(mysql:3306)/bnb48_inscription?charset=utf8mb4&parseTime=True&loc=Local
+  prefix: ""
+  max_idle_conns: 10
+  max_open_conns: 50
+  conn_max_lifetime: 60
+  slow_threshold: 3
