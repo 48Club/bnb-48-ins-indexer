@@ -39,8 +39,6 @@ services:
       - TZ=${TZ}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     restart: always
-    ports:
-      - 127.0.0.1:3306:3306/tcp
     volumes:
       - /etc/localtime:/etc/localtime
       - /opt/data/bnb48_index/mysql/conf:/etc/mysql/conf.d
