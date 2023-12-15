@@ -1,1 +1,1 @@
-# fans_index
+# bnb-48-ins-indexer
