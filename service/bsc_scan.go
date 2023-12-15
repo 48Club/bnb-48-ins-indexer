@@ -3,6 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -14,9 +18,6 @@ import (
 	bnb48types "github.com/jwrookie/fans/pkg/types"
 	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
-	"math/big"
-	"strings"
-	"time"
 )
 
 type BscScanService struct {
@@ -217,6 +218,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	// update accountWallet
+	newWallet := false
 	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, account.Id, inscription.TickHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -227,6 +229,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 			if err = s.accountWallet.Create(db, accountWallet); err != nil {
 				return err
 			}
+			newWallet = true
 		} else {
 			return err
 		}
@@ -242,6 +245,15 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
 		return err
+	}
+	if newWallet {
+		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.Tick, 1); err != nil {
+			return err
+		}
+	} else if balance == common.Big0 {
+		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.Tick, -1); err != nil {
+			return err
+		}
 	}
 
 	// add record
@@ -325,16 +337,25 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		return nil, err
 	}
 	currentBalance, err := utils.StringToBigint(accountWallet.Balance)
+	if err != nil {
+		return nil, err
+	}
 	if currentBalance.Cmp(amt) < 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, current balance: %s, need balance:%s", tx.Hash().Hex(), "insufficient balance", accountWallet.Balance, inscription.Amt)
 		return zero, nil
 	}
 
+	balance := new(big.Int).Sub(currentBalance, amt)
 	updates := map[string]interface{}{
-		"balance": new(big.Int).Sub(currentBalance, amt).String(),
+		"balance": balance.String(),
 	}
 	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
 		return nil, err
+	}
+	if balance == common.Big0 {
+		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.Tick, -1); err != nil {
+			return nil, err
+		}
 	}
 
 	// add record for tx from
@@ -376,6 +397,7 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc inscripti
 	}
 
 	// update accountWallet
+	newWallet := false
 	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, account.Id, insc.TickHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -386,6 +408,7 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc inscripti
 			if err = s.accountWallet.Create(db, accountWallet); err != nil {
 				return err
 			}
+			newWallet = true
 		} else {
 			return err
 		}
@@ -402,7 +425,11 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc inscripti
 	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
 		return err
 	}
-
+	if newWallet {
+		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.Tick, 1); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -11,6 +12,7 @@ type IInscription interface {
 	Create(db *gorm.DB, model *InscriptionModel) error
 	Find(db *gorm.DB) ([]*InscriptionModel, error)
 	Count(db *gorm.DB) (int64, error)
+	UpdateHolders(db *gorm.DB, tick string, delta int64) error
 }
 
 type InscriptionModel struct {
@@ -84,4 +86,23 @@ func (h *InscriptionHandler) Create(db *gorm.DB, model *InscriptionModel) error 
 	model.UpdateAt = model.CreateAt
 
 	return db.Table(h.TableName()).Create(model).Error
+}
+
+func (h *InscriptionHandler) UpdateHolders(db *gorm.DB, tick string, delta int64) error {
+	// var err error
+	var res []*InscriptionModel
+	db = db.Where("tick = ? ", tick)
+	if err := db.Table(h.TableName()).Find(&res).Error; err != nil {
+		return err
+	}
+	if len(res) == 0 {
+		return fmt.Errorf("tick %s invalid", tick)
+	}
+	model := res[0]
+	holders := int64(model.Holders) + delta
+	model.Holders += uint64(holders)
+	if err := db.Table(h.TableName()).Save(model).Error; err != nil {
+		return err
+	}
+	return nil
 }

@@ -18,7 +18,7 @@ func NewInscriptionController() *InscriptionController {
 }
 
 func (c *InscriptionController) List(ctx *gin.Context) {
-	var req bnb48types.CommonListCond
+	var req bnb48types.ListInscriptionWalletReq
 	if err := ctx.ShouldBind(&req); err != nil {
 		utils.FailResponse(ctx, err.Error())
 		return

@@ -17,7 +17,14 @@ func NewInscriptionService() *InscriptionService {
 	}
 }
 
-func (s *InscriptionService) List(req *bnb48types.CommonListCond) (*bnb48types.ListInscriptionRsp, error) {
+type Status uint64
+
+const (
+	InProgress Status = 1
+	Completed  Status = 2
+)
+
+func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bnb48types.ListInscriptionRsp, error) {
 	db := database.Mysql()
 	var res []*dao.InscriptionModel
 	var count int64
@@ -27,6 +34,15 @@ func (s *InscriptionService) List(req *bnb48types.CommonListCond) (*bnb48types.L
 			tx = tx.Limit(int(req.PageSize))
 		}
 		tx = tx.Offset(int(req.Page) * int(req.PageSize))
+		if req.Protocol != "" {
+			tx = tx.Where("protocol = ?", req.Protocol)
+		}
+		if req.Status > 0 {
+			tx = tx.Where("status = ?", req.Status)
+		}
+		if req.TickHash != "" {
+			tx = tx.Where("tick_hash = ?", req.TickHash)
+		}
 		var err error
 		res, err = s.inscriptionDao.Find(tx)
 		if err != nil {
