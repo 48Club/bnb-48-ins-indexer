@@ -25,6 +25,10 @@ type InscriptionModel struct {
 	Lim      string `json:"lim"`
 	Miners   string `json:"miners"`
 	Minted   string `json:"minted"`
+	Status   uint64 `json:"status"`
+	Protocol string `json:"protocol"`
+	Holders  uint64 `json:"holders"`
+	DeployBy string `json:"deploy_by"`
 	CreateAt int64  `json:"create_at"`
 	UpdateAt int64  `json:"update_at"`
 	DeleteAt int64  `json:"delete_at"`

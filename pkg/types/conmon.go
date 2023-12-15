@@ -16,6 +16,8 @@ type CommonListRsp struct {
 type ListAccountWalletReq struct {
 	CommonListCond
 	TickHash string `json:"tick_hash"  binding:"required"`
+	Protocol string `json:"protocol"  binding:"required"`
+	Status   uint64 `json:"status"`
 }
 
 type ListAccountWalletRsp struct {

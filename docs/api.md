@@ -139,6 +139,9 @@ response(json)
                 "lim": string,
                 "miners": string,
                 "minted": int,
+                "status" : int, #1: in_progress 2: completed
+                "holders" : int,
+                "deploy_by" : string,
                 "create_at": int,
                 "update_at": 0,
                 "delete_at": 0
