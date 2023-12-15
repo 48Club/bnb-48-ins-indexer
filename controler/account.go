@@ -32,3 +32,19 @@ func (c *AccountController) List(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, res)
 }
+
+func (c *AccountController) Balance(ctx *gin.Context) {
+	var req bnb48types.AccountBalanceReq
+	if err := ctx.ShouldBind(&req); err != nil {
+		utils.FailResponse(ctx, err.Error())
+		return
+	}
+
+	res, err := c.accountS.Balance(req)
+	if err != nil {
+		utils.FailResponse(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(ctx, res)
+}

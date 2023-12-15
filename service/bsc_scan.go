@@ -250,7 +250,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.Tick, 1); err != nil {
 			return err
 		}
-	} else if balance == common.Big0 {
+	} else if balance.Cmp(common.Big0) == 0 {
 		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.Tick, -1); err != nil {
 			return err
 		}
@@ -352,7 +352,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
 		return nil, err
 	}
-	if balance == common.Big0 {
+	if balance.Cmp(common.Big0) == 0 {
 		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.Tick, -1); err != nil {
 			return nil, err
 		}

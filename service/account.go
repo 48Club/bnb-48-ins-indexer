@@ -19,8 +19,26 @@ func NewAccountService() *AccountService {
 	}
 }
 
+func (s *AccountService) Balance(req bnb48types.AccountBalanceReq) (*bnb48types.AccountBalanceRsp, error) {
+	db := database.Mysql()
+	var res *dao.AccountWalletModel
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		res, err = s.walletDao.SelectByAddressTickHash(tx, req.Address, req.TickHash)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	resp := &bnb48types.AccountBalanceRsp{AccountWalletModel: res}
+	return resp, nil
+}
+
 func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.ListAccountWalletRsp, error) {
-	// TODO 这里需要返回list？另外accountId是不是漏了
 	db := database.Mysql()
 	var (
 		res   []*dao.AccountWalletModel

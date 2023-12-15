@@ -23,6 +23,15 @@ type ListAccountWalletRsp struct {
 	List []*dao.AccountWalletModel `json:"list"`
 }
 
+type AccountBalanceReq struct {
+	TickHash string `json:"tick_hash"  binding:"required"`
+	Address  string `json:"address"  binding:"required"`
+}
+
+type AccountBalanceRsp struct {
+	*dao.AccountWalletModel `json:"wallet"`
+}
+
 type ListRecordRsp struct {
 	CommonListRsp
 	List []*dao.AccountRecordsModel `json:"list"`
