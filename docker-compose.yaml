@@ -44,7 +44,6 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     restart: always
     volumes:
-      - /etc/localtime:/etc/localtime
       - /opt/data/bnb48_index/mysql/conf:/etc/mysql/conf.d
       - /opt/data/bnb48_index/mysql/data:/var/lib/mysql
       - /opt/data/bnb48_index/mysql/logs:/var/log/mysql
