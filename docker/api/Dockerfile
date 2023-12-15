@@ -11,7 +11,10 @@ RUN go build -o api main.go
 FROM ubuntu:22.04
 
 WORKDIR /www/api
-ENV TIME_ZONE=UTC
+
+ENV  TIME_ZONE=UTC \
+    MYSQL_PASSWORD=123456
+
 RUN ln -snf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && echo $TIME_ZONE > /etc/timezone
 RUN apt-get update && apt-get install -y ca-certificates
 

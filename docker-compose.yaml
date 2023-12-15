@@ -11,6 +11,8 @@ services:
       - ./logs:/www/logs
     depends_on:
       - mysql
+    environment:
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
     logging:
       &logging
       driver: "json-file"
@@ -28,6 +30,8 @@ services:
     volumes:
       - ./config:/www/api/config
       - ./logs:/www/logs
+    environment:
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
     depends_on:
       - mysql
     logging:

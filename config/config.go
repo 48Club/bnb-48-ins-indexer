@@ -3,9 +3,10 @@ package config
 import (
 	"bytes"
 	_ "embed"
-	"io/ioutil"
+	"os"
 	"path"
 	"runtime"
+	"strings"
 
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
@@ -53,6 +54,7 @@ type Config struct {
 }
 
 func GetConfig() Config {
+
 	return _config
 }
 
@@ -68,7 +70,7 @@ func init() {
 
 	_, filename, _, _ := runtime.Caller(0)
 
-	bscBytes, err := ioutil.ReadFile(path.Join(path.Dir(filename), "bsc.yaml"))
+	bscBytes, err := os.ReadFile(path.Join(path.Dir(filename), "bsc.yaml"))
 	if err != nil {
 		panic(err)
 	}
@@ -96,6 +98,7 @@ func init() {
 		if err := mysqlConf.Unmarshal(&_conf.Mysql); err != nil {
 			panic(err)
 		}
+		_conf.Mysql.Url = strings.Replace(_conf.Mysql.Url, "mysqlpasswd", os.Getenv("MYSQL_PASSWORD"), 1)
 	}
 
 	{
@@ -122,7 +125,7 @@ func SaveBSCConfig(blockNumber uint64) error {
 		return err
 	}
 
-	if err = ioutil.WriteFile("./config/bsc.yaml", data, 0o666); err != nil {
+	if err = os.WriteFile("./config/bsc.yaml", data, 0o666); err != nil {
 		return err
 	}
 
