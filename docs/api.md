@@ -113,6 +113,9 @@ request body(json)
 {
 "page" int
 "page_size" int (required, 1~256)
+"protocol" string
+"tick_hash" string
+"status": (0:all:, 1:in_progress, 2:completed)
 }
 ```
 
@@ -142,6 +145,7 @@ response(json)
                 "status" : int, #1: in_progress 2: completed
                 "holders" : int,
                 "deploy_by" : string,
+                "protocol": string,
                 "create_at": int,
                 "update_at": 0,
                 "delete_at": 0
