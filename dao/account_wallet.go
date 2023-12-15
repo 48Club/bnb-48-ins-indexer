@@ -1,8 +1,9 @@
 package dao
 
 import (
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type IAccountWallet interface {
@@ -10,6 +11,7 @@ type IAccountWallet interface {
 	Create(db *gorm.DB, model *AccountWalletModel) error
 	UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error
 	SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error)
+	SelectByAddressTickHash(db *gorm.DB, address string, tickHash string) (*AccountWalletModel, error)
 	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
 }
@@ -26,8 +28,7 @@ type AccountWalletModel struct {
 	DeleteAt  int64  `json:"delete_at"`
 }
 
-type AccountWalletHandler struct {
-}
+type AccountWalletHandler struct{}
 
 func (h *AccountWalletHandler) TableName() string {
 	return "account_wallet"
@@ -70,6 +71,19 @@ func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId 
 	)
 
 	if err = db.Table(h.TableName()).Where("account_id = ? and tick_hash = ?", accountId, tickHash).First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &model, nil
+}
+
+func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash string) (*AccountWalletModel, error) {
+	var (
+		model AccountWalletModel
+		err   error
+	)
+
+	if err = db.Table(h.TableName()).Where("address = ? and tick_hash = ?", address, tickHash).First(&model).Error; err != nil {
 		return nil, err
 	}
 

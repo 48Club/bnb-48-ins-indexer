@@ -22,6 +22,7 @@ func NewBotRoute() *gin.Engine {
 		v1.POST("/balance/list", account.List)
 		v1.POST("/record/list", record.List)
 		v1.POST("/inscription/list", inscription.List)
+		v1.POST("/account/balance", account.Balance)
 	}
 
 	return r
