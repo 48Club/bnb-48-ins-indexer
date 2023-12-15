@@ -9,13 +9,14 @@ services:
     volumes:
       - ./config:/www/index/config
       - ./logs:/www/logs
-    privileged: true
-    networks:
-      - bnb48
-    links:
-      - mysql
     depends_on:
       - mysql
+    logging:
+      &logging
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: 10m
 
   api:
     build:
@@ -23,36 +24,40 @@ services:
       dockerfile: ./docker/api/Dockerfile
     restart: always
     ports:
-      - "0.0.0.0:8888:8888"
+      - 0.0.0.0:8547:8888/tcp
     volumes:
       - ./config:/www/api/config
       - ./logs:/www/logs
-    privileged: true
-    networks:
-      - bnb48
-    links:
-      - mysql
     depends_on:
       - mysql
+    logging:
+      <<: *logging
 
   mysql:
     image: "mysql:8.0.29"
     environment:
-      MYSQL_ROOT_PASSWORD: mysqlpasswd
-      MYSQL_ROOT_HOST: "%"
+      - TZ=${TZ}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     restart: always
-    command: ["--default-authentication-plugin", "mysql_native_password"]
     ports:
-      - "0.0.0.0:32089:3306"
-    networks:
-      - bnb48
+      - 127.0.0.1:3306:3306/tcp
     volumes:
       - /etc/localtime:/etc/localtime
-      - ../data/bnb48_index/mysql/conf:/etc/mysql/conf.d
-      - ../data/bnb48_index/mysql/data:/var/lib/mysql
-      - ../data/bnb48_index/mysql/logs:/var/log/mysql
+      - /opt/data/bnb48_index/mysql/conf:/etc/mysql/conf.d
+      - /opt/data/bnb48_index/mysql/data:/var/lib/mysql
+      - /opt/data/bnb48_index/mysql/logs:/var/log/mysql
       - ./scripts/sql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    logging:
+      <<: *logging
 
-networks:
-  bnb48:
-    driver: bridge
+  phpmyadmin:
+    image: phpmyadmin:latest
+    restart: always
+    depends_on:
+      - mysql
+    ports:
+      - 8548:80/tcp
+    environment:
+      - PMA_HOST=mysql
+    logging:
+      <<: *logging
