@@ -1,11 +1,11 @@
-package service
+package dao
 
 import (
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/jwrookie/fans/dao"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"testing"
 )
 
 func TestFindAccount(t *testing.T) {
@@ -14,8 +14,10 @@ func TestFindAccount(t *testing.T) {
 		t.Fatal("error0")
 	}
 	defer conn.Close()
-	db, err := gorm.Open(mysql.New(mysql.Config{Conn: conn,
-		SkipInitializeWithVersion: true}), &gorm.Config{})
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		Conn:                      conn,
+		SkipInitializeWithVersion: true,
+	}), &gorm.Config{})
 	if err != nil {
 		t.Fatal("error1")
 	}
@@ -23,7 +25,7 @@ func TestFindAccount(t *testing.T) {
 		"id", "block", "block_at", "tx_hash", "tx_index", "from", "to", "input", "type", "create_at", "update_at", "delete_at",
 	}).AddRow(1, 1, 1, "abc", 1, "from", "to", "input", 0, 1, 1, 0)
 	mock.ExpectQuery("^SELECT (.+) FROM `account_records`").WillReturnRows(rows)
-	h := dao.AccountRecordsHandler{}
+	h := AccountRecordsHandler{}
 	records, err := h.Find(db)
 	if err != nil {
 		t.Fatal("error2")
