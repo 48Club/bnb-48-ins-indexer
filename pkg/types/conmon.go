@@ -16,8 +16,6 @@ type CommonListRsp struct {
 type ListAccountWalletReq struct {
 	CommonListCond
 	TickHash string `json:"tick_hash"  binding:"required"`
-	Protocol string `json:"protocol"  binding:"required"`
-	Status   uint64 `json:"status"`
 }
 
 type ListAccountWalletRsp struct {
@@ -28,6 +26,13 @@ type ListAccountWalletRsp struct {
 type ListRecordRsp struct {
 	CommonListRsp
 	List []*dao.AccountRecordsModel `json:"list"`
+}
+
+type ListInscriptionWalletReq struct {
+	CommonListCond
+	Protocol string `json:"protocol"`
+	TickHash string `json:"tick_hash"`
+	Status   uint64 `json:"status"`
 }
 
 type ListInscriptionRsp struct {
