@@ -2,7 +2,7 @@ bnb48_index:
   name: bnb48_index
   port: 8888
   route_prefix: /bnb48_index
-  bsc_rpc: https://rpc.ankr.com/bsc/ace69abcacd8190d01f7c729847a286095340c412af9e4fff3c20547235d0364
+  bsc_rpc: ws://127.0.0.1:18545
 
 log:
   dir: /www/logs
