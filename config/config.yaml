@@ -2,7 +2,7 @@ bnb48_index:
   name: bnb48_index
   port: 8888
   route_prefix: /bnb48_index
-  bsc_rpc: ws://127.0.0.1:18545
+  bsc_rpc: /opt/.ethereum/geth.ipc
 
 log:
   dir: /www/logs
