@@ -13,6 +13,7 @@ type IInscription interface {
 	Find(db *gorm.DB) ([]*InscriptionModel, error)
 	Count(db *gorm.DB) (int64, error)
 	UpdateHolders(db *gorm.DB, tick string, delta int64) error
+	Update(db *gorm.DB, id uint64, data map[string]interface{}) error
 }
 
 type InscriptionModel struct {
@@ -104,5 +105,16 @@ func (h *InscriptionHandler) UpdateHolders(db *gorm.DB, tick string, delta int64
 	if err := db.Table(h.TableName()).Save(model).Error; err != nil {
 		return err
 	}
+	return nil
+}
+
+func (h *InscriptionHandler) Update(db *gorm.DB, id uint64, data map[string]interface{}) error {
+	var err error
+
+	data["update_at"] = time.Now().UnixMilli()
+	if err = db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
