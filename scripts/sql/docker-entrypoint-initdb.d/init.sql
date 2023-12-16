@@ -68,5 +68,5 @@ CREATE TABLE IF NOT EXISTS `account_records` (
 
 
 INSERT INTO `inscription` (`id`, `tick`, `tick_hash`, `tx_index`, `block`, `block_at`, `decimals`, `max`, `lim`, `miners`, `minted`,`protocol`,`holders`, `deploy_by`, `status`, `create_at`, `update_at`, `delete_at`) VALUES
-(1, 'fans', '0xd893ca77b3122cb6c480da7f8a12cb82e19542076f5895f21446258dc473a7c2', 237, 34175786, 1702042086, 8, '1000000', '1', '0x72b61c6014342d914470eC7aC2975bE345796c2b', '1000000', 'bnb-48', 7262, '0xda4Ee24723cCf8F7Ad840Ce4647049F91fF664FE
+(1, 'fans', '0xd893ca77b3122cb6c480da7f8a12cb82e19542076f5895f21446258dc473a7c2', 237, 34175786, 1702042086, 8, '1036036', '1', '0x72b61c6014342d914470eC7aC2975bE345796c2b', '1036036', 'bnb-48', 7262, '0xda4Ee24723cCf8F7Ad840Ce4647049F91fF664FE
 ', 2, 1702042086000, 0, 0);
