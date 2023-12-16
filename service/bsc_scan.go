@@ -171,9 +171,9 @@ func (s *BscScanService) recap() error {
 }
 
 func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
-	lim, err := utils.StringToBigint(inscription.Lim)
+	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
-		log.Sugar.Debugf("tx: %s, error: %s, lim: %s", tx.Hash().Hex(), "lim", inscription.Lim)
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
 		return nil
 	}
 
@@ -188,9 +188,9 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "minting ended")
 		return nil
 	}
-	// lim
-	if lim.Cmp(insc.Lim) > 0 || lim.Cmp(big.NewInt(0)) < 0 {
-		log.Sugar.Debugf("tx: %s, error: %s, want: 0 < lim < %d, get: %d", tx.Hash().Hex(), "lim", insc.Lim, lim)
+	// amt
+	if amt.Cmp(insc.Lim) > 0 || amt.Cmp(big.NewInt(0)) < 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, want: 0 < amt < %d, get: %d", tx.Hash().Hex(), "amt invalid", insc.Lim, amt)
 		return nil
 	}
 	// miners
