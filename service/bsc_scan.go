@@ -25,7 +25,7 @@ type BscScanService struct {
 	accountRecords dao.IAccountRecords
 	accountWallet  dao.IAccountWallet
 	inscriptionDao dao.IInscription
-	inscriptions   map[string]inscription // tick-hash : inscription
+	inscriptions   map[string]*inscription // tick-hash : inscription
 	conf           config.Config
 }
 
@@ -45,7 +45,7 @@ func NewBscScanService() *BscScanService {
 		accountRecords: &dao.AccountRecordsHandler{},
 		accountWallet:  &dao.AccountWalletHandler{},
 		inscriptionDao: &dao.InscriptionHandler{},
-		inscriptions:   make(map[string]inscription),
+		inscriptions:   make(map[string]*inscription),
 		conf:           config.GetConfig(),
 	}
 }
@@ -78,7 +78,7 @@ func (s *BscScanService) init() error {
 			miners[ele] = struct{}{}
 		}
 
-		s.inscriptions[ele.TickHash] = insc
+		s.inscriptions[ele.TickHash] = &insc
 	}
 
 	return nil
@@ -188,6 +188,11 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "minting ended")
 		return nil
 	}
+	// minting overflow
+	if new(big.Int).Add(amt, insc.Minted).Cmp(insc.Max) > 0 {
+		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "minting overflow")
+		return nil
+	}
 	// amt
 	if amt.Cmp(insc.Lim) > 0 || amt.Cmp(big.NewInt(0)) < 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, want: 0 < amt < %d, get: %d", tx.Hash().Hex(), "amt invalid", insc.Lim, amt)
@@ -272,6 +277,18 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	if err = s.accountRecords.Create(db, record); err != nil {
+		return err
+	}
+
+	// update inscription
+	insc.Minted = new(big.Int).Add(insc.Minted, amt)
+	inscUpdate := map[string]interface{}{
+		"minted": insc.Minted.String(),
+	}
+	if insc.Minted.Cmp(insc.Max) == 0 {
+		inscUpdate["status"] = 2 // mint end
+	}
+	if err = s.inscriptionDao.Update(db, insc.Id, inscUpdate); err != nil {
 		return err
 	}
 
@@ -379,7 +396,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	return amt, nil
 }
 
-func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc inscription, to string) error {
+func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string) error {
 	// account
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
