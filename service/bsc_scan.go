@@ -194,7 +194,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		return nil
 	}
 	// amt
-	if amt.Cmp(insc.Lim) > 0 || amt.Cmp(big.NewInt(0)) < 0 {
+	if amt.Cmp(insc.Lim) > 0 || amt.Cmp(big.NewInt(0)) <= 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, want: 0 < amt < %d, get: %d", tx.Hash().Hex(), "amt invalid", insc.Lim, amt)
 		return nil
 	}
