@@ -33,7 +33,7 @@ response(json)
                 "balance": string,
                 "create_at": int,
                 "update_at": int,
-                "delete_at": 0
+                "delete_at": int
             }
         ]
     }
@@ -147,8 +147,8 @@ response(json)
                 "deploy_by" : string,
                 "protocol": string,
                 "create_at": int,
-                "update_at": 0,
-                "delete_at": 0
+                "update_at": int,
+                "delete_at": int
             }
         ]
     }
@@ -161,4 +161,47 @@ example:
 curl --location 'http://hostname:port/bnb48_index/v1/inscription/list' \
 --header 'Content-Type: application/json' \
 --data '{"page": 0, "page_size":3}'
+```
+
+## /bnb48_index/v1/account/balance
+
+method POST
+
+request body(json)
+
+```
+{
+"tick_hash" string
+"address" string
+}
+```
+
+response(json)
+
+```
+{
+    "code": 0,
+    "msg": "ok",
+    "data": {
+        "wallet": {
+            "id": int,
+            "account_id": int,
+            "address": string,
+            "tick": string,
+            "tick_hash": string,
+            "balance": string,
+            "create_at": int,
+            "update_at": int,
+            "delete_at": int
+        }
+    }
+}
+```
+
+example:
+
+```
+curl --location 'http://hostname:port/bnb48_index/v1/account/balance' \
+--header 'Content-Type: application/json' \
+--data '{"tick_hash":"aaaa", "address":"xxx"}'
 ```
