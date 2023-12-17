@@ -175,7 +175,7 @@ request body(json)
 
 ```
 {
-"tick_hash" string (required)
+"tick_hash" string
 "address" string (required)
 }
 ```
@@ -187,17 +187,30 @@ response(json)
     "code": 0,
     "msg": "ok",
     "data": {
-        "wallet": {
-            "id": int,
-            "account_id": int,
-            "address": string,
-            "tick": string,
-            "tick_hash": string,
-            "balance": string,
-            "create_at": int,
-            "update_at": int,
-            "delete_at": int
-        }
+        "wallet": [
+            {
+                "id": int,
+                "account_id": int,
+                "address": string,
+                "tick": string,
+                "tick_hash": string,
+                "balance": string,
+                "create_at": int,
+                "update_at": int,
+                "delete_at": int
+            },
+            {
+                "id": int,
+                "account_id": int,
+                "address": string,
+                "tick": string,
+                "tick_hash": string,
+                "balance": string,
+                "create_at": int,
+                "update_at": int,
+                "delete_at": int
+            }
+        ]
     }
 }
 ```
