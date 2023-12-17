@@ -84,7 +84,7 @@ func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address stri
 		err   error
 	)
 
-	if err = db.Table(h.TableName()).Where("address = ?", address, tickHash).Where("and tick_hash ? in ", tickHash).Find(&model).Error; err != nil {
+	if err = db.Table(h.TableName()).Where("address = ?", address).Where("tick_hash ? in ", tickHash).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
