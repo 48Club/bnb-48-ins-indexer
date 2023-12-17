@@ -48,6 +48,10 @@ func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListReco
 	}); err != nil {
 		return nil, err
 	}
+	for k, v := range res {
+		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
+		res[k] = v
+	}
 	resp := &bnb48types.ListRecordRsp{
 		CommonListRsp: bnb48types.CommonListRsp{
 			Count:    count,
