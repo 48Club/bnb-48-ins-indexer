@@ -46,6 +46,11 @@ type ListInscriptionWalletReq struct {
 	DeployBy string `json:"deploy_by"`
 }
 
+type ListRecordReq struct {
+	CommonListCond
+	TickHash string `json:"tick_hash"`
+}
+
 type ListInscriptionRsp struct {
 	CommonListRsp
 	List []*dao.InscriptionModel `json:"list"`

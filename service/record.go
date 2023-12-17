@@ -17,15 +17,21 @@ func NewRecordService() *RecordService {
 	}
 }
 
-func (s *RecordService) List(req bnb48types.CommonListCond) (*bnb48types.ListRecordRsp, error) {
+func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListRecordRsp, error) {
 	db := database.Mysql()
 	var res []*dao.AccountRecordsModel
 	var count int64
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		countTx := tx.Session(&gorm.Session{Context: tx.Statement.Context})
+
+		tx = tx.Order("`block` desc, `tx_index` desc")
 		if req.PageSize > 0 {
 			tx = tx.Limit(int(req.PageSize))
 		}
+		if req.TickHash != "" {
+			tx = tx.Where("`tick_hash` = ?", req.TickHash)
+		}
+
 		tx = tx.Offset(int(req.Page) * int(req.PageSize))
 		var err error
 		res, err = s.recordDao.Find(tx)
