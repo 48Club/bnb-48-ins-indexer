@@ -7,16 +7,17 @@ import (
 	"strings"
 	"time"
 
+	"bnb-48-ins-indexer/config"
+	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/database"
+	"bnb-48-ins-indexer/pkg/global"
+	"bnb-48-ins-indexer/pkg/log"
+	bnb48types "bnb-48-ins-indexer/pkg/types"
+	"bnb-48-ins-indexer/pkg/utils"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/jwrookie/fans/config"
-	"github.com/jwrookie/fans/dao"
-	"github.com/jwrookie/fans/pkg/database"
-	"github.com/jwrookie/fans/pkg/global"
-	"github.com/jwrookie/fans/pkg/log"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
-	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
 )
 

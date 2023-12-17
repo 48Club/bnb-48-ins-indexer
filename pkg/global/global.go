@@ -1,8 +1,9 @@
 package global
 
 import (
+	"bnb-48-ins-indexer/config"
+
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/jwrookie/fans/config"
 )
 
 const (

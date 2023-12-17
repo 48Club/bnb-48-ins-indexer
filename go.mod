@@ -1,4 +1,4 @@
-module github.com/jwrookie/fans
+module bnb-48-ins-indexer
 
 go 1.20
 

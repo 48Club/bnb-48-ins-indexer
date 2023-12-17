@@ -1,9 +1,11 @@
 package service
 
 import (
-	"github.com/jwrookie/fans/dao"
-	"github.com/jwrookie/fans/pkg/database"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
+	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/database"
+	bnb48types "bnb-48-ins-indexer/pkg/types"
+	"bnb-48-ins-indexer/pkg/utils"
+
 	"gorm.io/gorm"
 )
 
@@ -45,6 +47,10 @@ func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListReco
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+	for k, v := range res {
+		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
+		res[k] = v
 	}
 	resp := &bnb48types.ListRecordRsp{
 		CommonListRsp: bnb48types.CommonListRsp{

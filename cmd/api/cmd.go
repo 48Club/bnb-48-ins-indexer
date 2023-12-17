@@ -1,20 +1,21 @@
 package api
 
 import (
+	"bnb-48-ins-indexer/config"
+	"bnb-48-ins-indexer/pkg/database"
+	"bnb-48-ins-indexer/pkg/log"
+	"bnb-48-ins-indexer/router"
 	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/jwrookie/fans/config"
-	"github.com/jwrookie/fans/pkg/database"
-	"github.com/jwrookie/fans/pkg/log"
-	"github.com/jwrookie/fans/router"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 func NewCommand() *cobra.Command {
