@@ -11,8 +11,8 @@ import (
 	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
 	"bnb-48-ins-indexer/pkg/global"
+	"bnb-48-ins-indexer/pkg/helper"
 	"bnb-48-ins-indexer/pkg/log"
-	bnb48types "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
 
 	"github.com/ethereum/go-ethereum"
@@ -171,7 +171,7 @@ func (s *BscScanService) recap() error {
 	return nil
 }
 
-func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
+func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
 	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
@@ -296,7 +296,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	return nil
 }
 
-func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
+func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
@@ -324,7 +324,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 	return nil
 }
 
-func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) (*big.Int, error) {
+func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) (*big.Int, error) {
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	zero := new(big.Int)
 
