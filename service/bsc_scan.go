@@ -17,6 +17,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"gorm.io/gorm"
 )
@@ -271,7 +272,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		TickHash: insc.TickHash,
 		From:     from,
 		To:       strings.ToLower(tx.To().Hex()),
-		Input:    strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
+		Input:    hexutil.Encode(tx.Data()),
 		Type:     1, // mint
 	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
@@ -385,7 +386,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		TickHash: inscription.TickHash,
 		From:     from,
 		To:       strings.ToLower(tx.To().Hex()),
-		Input:    strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
+		Input:    hexutil.Encode(tx.Data()),
 		Type:     2, // transfer
 	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {

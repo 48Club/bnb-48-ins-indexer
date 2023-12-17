@@ -23,6 +23,7 @@ type AccountWalletModel struct {
 	Address   string `json:"address"`
 	Tick      string `json:"tick"`
 	TickHash  string `json:"tick_hash"`
+	Decimals  uint8  `json:"decimals"`
 	Balance   string `json:"balance"`
 	CreateAt  int64  `json:"create_at"`
 	UpdateAt  int64  `json:"update_at"`
