@@ -14,7 +14,7 @@ request body(json)
 }
 ```
 
-response(json)
+response(json) (sorted by balance desc)
 
 ```
 {
@@ -61,12 +61,13 @@ request body(json)
 
 ```
 {
+"tick_hash" string
 "page" int
 "page_size" int (required, 1~256)
 }
 ```
 
-response(json)
+response(json) (sorted by block_at desc, tx_index desc)
 
 ```
 {
