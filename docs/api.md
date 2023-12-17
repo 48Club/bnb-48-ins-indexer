@@ -10,6 +10,7 @@ request body(json)
 {
 "page" int
 "page_size" int (required, 1~256)
+"tick_hash" string (required)
 }
 ```
 
@@ -171,8 +172,8 @@ request body(json)
 
 ```
 {
-"tick_hash" string
-"address" string
+"tick_hash" string (required)
+"address" string (required)
 }
 ```
 
