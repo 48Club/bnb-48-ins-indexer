@@ -24,12 +24,12 @@ type ListAccountWalletRsp struct {
 }
 
 type AccountBalanceReq struct {
-	TickHash string `json:"tick_hash"  binding:"required"`
-	Address  string `json:"address"  binding:"required"`
+	TickHash []string `json:"tick_hash"`
+	Address  string   `json:"address"  binding:"required"`
 }
 
 type AccountBalanceRsp struct {
-	*dao.AccountWalletModel `json:"wallet"`
+	Wallet []*dao.AccountWalletModel `json:"wallet"`
 }
 
 type ListRecordRsp struct {
@@ -42,6 +42,13 @@ type ListInscriptionWalletReq struct {
 	Protocol string `json:"protocol"`
 	TickHash string `json:"tick_hash"`
 	Status   uint64 `json:"status"`
+	Tick     string `json:"tick"`
+	DeployBy string `json:"deploy_by"`
+}
+
+type ListRecordReq struct {
+	CommonListCond
+	TickHash string `json:"tick_hash"`
 }
 
 type ListInscriptionRsp struct {

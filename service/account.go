@@ -21,10 +21,15 @@ func NewAccountService() *AccountService {
 
 func (s *AccountService) Balance(req bnb48types.AccountBalanceReq) (*bnb48types.AccountBalanceRsp, error) {
 	db := database.Mysql()
-	var res *dao.AccountWalletModel
+	var res []*dao.AccountWalletModel
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		var err error
-		res, err = s.walletDao.SelectByAddressTickHash(tx, req.Address, req.TickHash)
+		if len(req.TickHash) == 0 {
+			res, err = s.walletDao.SelectByAddress(tx, req.Address)
+		} else {
+			res, err = s.walletDao.SelectByAddressTickHash(tx, req.Address, req.TickHash)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -34,7 +39,7 @@ func (s *AccountService) Balance(req bnb48types.AccountBalanceReq) (*bnb48types.
 		return nil, err
 	}
 
-	resp := &bnb48types.AccountBalanceRsp{AccountWalletModel: res}
+	resp := &bnb48types.AccountBalanceRsp{Wallet: res}
 	return resp, nil
 }
 
@@ -47,6 +52,7 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		countTx := tx.Session(&gorm.Session{Context: tx.Statement.Context})
 
+		tx = tx.Order("`balance` desc")
 		if req.PageSize > 0 {
 			tx = tx.Limit(int(req.PageSize))
 		}

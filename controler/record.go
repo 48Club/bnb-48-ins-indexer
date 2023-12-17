@@ -18,7 +18,7 @@ func NewRecordController() *RecordController {
 }
 
 func (c *RecordController) List(ctx *gin.Context) {
-	var req bnb48types.CommonListCond
+	var req bnb48types.ListRecordReq
 	if err := ctx.ShouldBind(&req); err != nil {
 		utils.FailResponse(ctx, err.Error())
 		return
