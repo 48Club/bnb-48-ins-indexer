@@ -23,7 +23,7 @@ type AccountRecordsModel struct {
 	From        string                   `json:"from"`
 	To          string                   `json:"to"`
 	Input       string                   `json:"input"`
-	InputDecode *helper.BNB48Inscription `json:"input_deco" gorm:"-"`
+	InputDecode *helper.BNB48Inscription `json:"input_decode" gorm:"-"`
 	Type        uint8                    `json:"type"`
 	CreateAt    int64                    `json:"create_at"`
 	UpdateAt    int64                    `json:"update_at"`
