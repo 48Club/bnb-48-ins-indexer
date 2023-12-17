@@ -9,6 +9,7 @@ services:
     volumes:
       - ./config:/www/index/config
       - ./logs:/www/logs
+      - /root/.ethereum/:/opt/.ethereum/
     depends_on:
       - mysql
     environment:
@@ -30,6 +31,7 @@ services:
     volumes:
       - ./config:/www/api/config
       - ./logs:/www/logs
+      - /root/.ethereum/:/opt/.ethereum/
     environment:
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
     depends_on:
