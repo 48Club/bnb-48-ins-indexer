@@ -195,6 +195,7 @@ response(json)
                 "tick": string,
                 "tick_hash": string,
                 "balance": string,
+                "decimals": int,
                 "create_at": int,
                 "update_at": int,
                 "delete_at": int
@@ -206,6 +207,7 @@ response(json)
                 "tick": string,
                 "tick_hash": string,
                 "balance": string,
+                "decimals": int,
                 "create_at": int,
                 "update_at": int,
                 "delete_at": int
