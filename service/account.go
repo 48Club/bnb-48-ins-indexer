@@ -24,7 +24,7 @@ func (s *AccountService) Balance(req bnb48types.AccountBalanceReq) (*bnb48types.
 	var res []*dao.AccountWalletModel
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		var err error
-		if req.TickHash == "" {
+		if len(req.TickHash) == 0 {
 			res, err = s.walletDao.SelectByAddress(tx, req.Address)
 		} else {
 			res, err = s.walletDao.SelectByAddressTickHash(tx, req.Address, req.TickHash)

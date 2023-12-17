@@ -175,7 +175,7 @@ request body(json)
 
 ```
 {
-"tick_hash" string
+"tick_hash" []string
 "address" string (required)
 }
 ```
