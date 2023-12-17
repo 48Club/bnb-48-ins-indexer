@@ -85,3 +85,7 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 	}
 	return resp, nil
 }
+
+func (s *AccountService) GetInscription(insTickHashs []string, inss *[]*dao.InscriptionModel) {
+	_ = database.Mysql().Table("inscription").Where("tick_hash in ?", insTickHashs).Find(&inss)
+}
