@@ -1,9 +1,10 @@
 package index
 
 import (
-	"github.com/jwrookie/fans/pkg/database"
-	"github.com/jwrookie/fans/pkg/log"
-	"github.com/jwrookie/fans/service"
+	"bnb-48-ins-indexer/pkg/database"
+	"bnb-48-ins-indexer/pkg/log"
+	"bnb-48-ins-indexer/service"
+
 	"github.com/spf13/cobra"
 )
 

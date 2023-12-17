@@ -1,6 +1,6 @@
 package types
 
-import "github.com/jwrookie/fans/dao"
+import "bnb-48-ins-indexer/dao"
 
 type CommonListCond struct {
 	Page     int64 `json:"page"`

@@ -1,9 +1,11 @@
 package service
 
 import (
-	"github.com/jwrookie/fans/dao"
-	"github.com/jwrookie/fans/pkg/database"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
+	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/database"
+	bnb48types "bnb-48-ins-indexer/pkg/types"
+	"bnb-48-ins-indexer/pkg/utils"
+
 	"gorm.io/gorm"
 )
 

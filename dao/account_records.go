@@ -1,8 +1,9 @@
 package dao
 
 import (
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type IAccountRecords interface {

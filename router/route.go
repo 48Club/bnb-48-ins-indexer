@@ -1,9 +1,10 @@
 package router
 
 import (
+	"bnb-48-ins-indexer/config"
+	"bnb-48-ins-indexer/controler"
+
 	"github.com/gin-gonic/gin"
-	"github.com/jwrookie/fans/config"
-	"github.com/jwrookie/fans/controler"
 )
 
 func NewBotRoute() *gin.Engine {

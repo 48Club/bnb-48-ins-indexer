@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/jwrookie/fans/cmd/api"
-	"github.com/jwrookie/fans/cmd/index"
-	"github.com/spf13/cobra"
+	"bnb-48-ins-indexer/cmd/api"
+	"bnb-48-ins-indexer/cmd/index"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 func newCommand() *cobra.Command {

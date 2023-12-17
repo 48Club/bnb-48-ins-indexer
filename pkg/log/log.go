@@ -1,13 +1,14 @@
 package log
 
 import (
+	"bnb-48-ins-indexer/config"
 	"fmt"
-	"github.com/jwrookie/fans/config"
+	"io"
+	"os"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
-	"io"
-	"os"
 )
 
 var (
