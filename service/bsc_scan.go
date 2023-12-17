@@ -264,14 +264,15 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 
 	// add record
 	record := &dao.AccountRecordsModel{
-		Block:   block.NumberU64(),
-		BlockAt: block.Time() * 1000,
-		TxHash:  tx.Hash().Hex(),
-		TxIndex: uint64(index),
-		From:    from,
-		To:      strings.ToLower(tx.To().Hex()),
-		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
-		Type:    1, // mint
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time() * 1000,
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: insc.TickHash,
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
+		Type:     1, // mint
 	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return err
@@ -378,13 +379,14 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 
 	// add record for tx from
 	record := &dao.AccountRecordsModel{
-		Block:   block.NumberU64(),
-		TxHash:  tx.Hash().Hex(),
-		TxIndex: uint64(index),
-		From:    from,
-		To:      strings.ToLower(tx.To().Hex()),
-		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
-		Type:    2, // transfer
+		Block:    block.NumberU64(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: inscription.TickHash,
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
+		Type:     2, // transfer
 	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return nil, err

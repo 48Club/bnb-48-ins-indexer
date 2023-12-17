@@ -20,6 +20,7 @@ type AccountRecordsModel struct {
 	BlockAt     uint64                   `json:"block_at"`
 	TxHash      string                   `json:"tx_hash"`
 	TxIndex     uint64                   `json:"tx_index"`
+	TickHash    string                   `json:"tick_hash"`
 	From        string                   `json:"from"`
 	To          string                   `json:"to"`
 	Input       string                   `json:"input"`
