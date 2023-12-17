@@ -43,6 +43,12 @@ func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bn
 		if req.TickHash != "" {
 			tx = tx.Where("tick_hash = ?", req.TickHash)
 		}
+		if req.Tick != "" {
+			tx = tx.Where("tick = ?", req.Tick)
+		}
+		if req.DeployBy != "" {
+			tx = tx.Where("deploy_by = ?", req.DeployBy)
+		}
 		var err error
 		res, err = s.inscriptionDao.Find(tx)
 		if err != nil {

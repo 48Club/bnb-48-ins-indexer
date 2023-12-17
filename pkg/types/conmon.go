@@ -42,6 +42,8 @@ type ListInscriptionWalletReq struct {
 	Protocol string `json:"protocol"`
 	TickHash string `json:"tick_hash"`
 	Status   uint64 `json:"status"`
+	Tick     string `json:"tick"`
+	DeployBy string `json:"deploy_by"`
 }
 
 type ListInscriptionRsp struct {

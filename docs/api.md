@@ -116,6 +116,8 @@ request body(json)
 "page_size" int (required, 1~256)
 "protocol" string
 "tick_hash" string
+"tick" string
+"deploy_by" string
 "status" (0:all:, 1:in_progress, 2:completed)
 }
 ```
