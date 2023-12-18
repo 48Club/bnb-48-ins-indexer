@@ -97,7 +97,7 @@ func (s *BscScanService) Scan() error {
 	for {
 		targetBN := new(big.Int).SetUint64(block)
 		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
-		if err != nil || int64(targetBlockHeader.Time-45) > time.Now().Unix() {
+		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) >= 45 {
 			time.Sleep(time.Second)
 			continue
 		}

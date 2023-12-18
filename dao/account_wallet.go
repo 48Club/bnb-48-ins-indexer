@@ -118,7 +118,7 @@ func (h *AccountWalletHandler) Create(db *gorm.DB, model *AccountWalletModel) er
 		}
 	}
 
-	model.CreateAt = time.Now().UnixMilli()
+	model.CreateAt = time.Now().Unix()
 	model.UpdateAt = model.CreateAt
 
 	return db.Table(h.TableName()).Create(model).Error
@@ -127,7 +127,7 @@ func (h *AccountWalletHandler) Create(db *gorm.DB, model *AccountWalletModel) er
 func (h *AccountWalletHandler) UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error {
 	var err error
 
-	data["update_at"] = time.Now().UnixMilli()
+	data["update_at"] = time.Now().Unix()
 	if err = db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error; err != nil {
 		return err
 	}

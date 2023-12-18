@@ -1,8 +1,9 @@
 package dao
 
 import (
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type IAccount interface {
@@ -36,7 +37,7 @@ func (h *AccountHandler) Create(db *gorm.DB, model *AccountModel) error {
 		}
 	}
 
-	model.CreateAt = time.Now().UnixMilli()
+	model.CreateAt = time.Now().Unix()
 	model.UpdateAt = model.CreateAt
 
 	return db.Table(h.TableName()).Create(model).Error
