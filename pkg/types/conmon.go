@@ -3,8 +3,8 @@ package types
 import "bnb-48-ins-indexer/dao"
 
 type CommonListCond struct {
-	Page     int64 `json:"page"`
-	PageSize int8  `json:"page_size"  binding:"required"`
+	Page     int64 `json:"page" form:"page"`
+	PageSize int8  `json:"page_size" binding:"required" form:"page_size"`
 }
 
 type CommonListRsp struct {
@@ -15,7 +15,7 @@ type CommonListRsp struct {
 
 type ListAccountWalletReq struct {
 	CommonListCond
-	TickHash string `json:"tick_hash"  binding:"required"`
+	TickHash string `json:"tick_hash" binding:"required" form:"tick_hash"`
 }
 
 type ListAccountWalletRsp struct {
@@ -24,8 +24,8 @@ type ListAccountWalletRsp struct {
 }
 
 type AccountBalanceReq struct {
-	TickHash []string `json:"tick_hash"`
-	Address  string   `json:"address"  binding:"required"`
+	TickHash []string `json:"tick_hash" form:"tick_hash"`
+	Address  string   `json:"address" binding:"required" form:"address"`
 }
 
 type AccountBalanceRsp struct {
@@ -39,16 +39,16 @@ type ListRecordRsp struct {
 
 type ListInscriptionWalletReq struct {
 	CommonListCond
-	Protocol string `json:"protocol"`
-	TickHash string `json:"tick_hash"`
-	Status   uint64 `json:"status"`
-	Tick     string `json:"tick"`
-	DeployBy string `json:"deploy_by"`
+	Protocol string `json:"protocol" form:"protocol"`
+	TickHash string `json:"tick_hash" form:"tick_hash"`
+	Status   uint64 `json:"status" form:"status"`
+	Tick     string `json:"tick" form:"tick"`
+	DeployBy string `json:"deploy_by" form:"deploy_by"`
 }
 
 type ListRecordReq struct {
 	CommonListCond
-	TickHash string `json:"tick_hash"`
+	TickHash string `json:"tick_hash" form:"tick_hash"`
 }
 
 type ListInscriptionRsp struct {
