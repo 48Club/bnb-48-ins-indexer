@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jwrookie/fans/config"
-	"github.com/jwrookie/fans/pkg/log"
+	"bnb-48-ins-indexer/config"
+	"bnb-48-ins-indexer/pkg/log"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

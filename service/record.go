@@ -1,9 +1,11 @@
 package service
 
 import (
-	"github.com/jwrookie/fans/dao"
-	"github.com/jwrookie/fans/pkg/database"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
+	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/database"
+	bnb48types "bnb-48-ins-indexer/pkg/types"
+	"bnb-48-ins-indexer/pkg/utils"
+
 	"gorm.io/gorm"
 )
 
@@ -17,15 +19,21 @@ func NewRecordService() *RecordService {
 	}
 }
 
-func (s *RecordService) List(req bnb48types.CommonListCond) (*bnb48types.ListRecordRsp, error) {
+func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListRecordRsp, error) {
 	db := database.Mysql()
 	var res []*dao.AccountRecordsModel
 	var count int64
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		countTx := tx.Session(&gorm.Session{Context: tx.Statement.Context})
+
+		tx = tx.Order("`block` desc, `tx_index` desc")
 		if req.PageSize > 0 {
 			tx = tx.Limit(int(req.PageSize))
 		}
+		if req.TickHash != "" {
+			tx = tx.Where("`tick_hash` = ?", req.TickHash)
+		}
+
 		tx = tx.Offset(int(req.Page) * int(req.PageSize))
 		var err error
 		res, err = s.recordDao.Find(tx)
@@ -39,6 +47,10 @@ func (s *RecordService) List(req bnb48types.CommonListCond) (*bnb48types.ListRec
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+	for k, v := range res {
+		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
+		res[k] = v
 	}
 	resp := &bnb48types.ListRecordRsp{
 		CommonListRsp: bnb48types.CommonListRsp{

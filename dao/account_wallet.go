@@ -11,7 +11,8 @@ type IAccountWallet interface {
 	Create(db *gorm.DB, model *AccountWalletModel) error
 	UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error
 	SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error)
-	SelectByAddressTickHash(db *gorm.DB, address string, tickHash string) (*AccountWalletModel, error)
+	SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error)
+	SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error)
 	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
 }
@@ -22,6 +23,7 @@ type AccountWalletModel struct {
 	Address   string `json:"address"`
 	Tick      string `json:"tick"`
 	TickHash  string `json:"tick_hash"`
+	Decimals  uint8  `json:"decimals" gorm:"-"`
 	Balance   string `json:"balance"`
 	CreateAt  int64  `json:"create_at"`
 	UpdateAt  int64  `json:"update_at"`
@@ -77,17 +79,33 @@ func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId 
 	return &model, nil
 }
 
-func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash string) (*AccountWalletModel, error) {
+func (h *AccountWalletHandler) selectByAddress(db *gorm.DB, address string) *gorm.DB {
+	return db.Table(h.TableName()).Where("address = ?", address)
+}
+
+func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error) {
 	var (
-		model AccountWalletModel
+		model []*AccountWalletModel
 		err   error
 	)
 
-	if err = db.Table(h.TableName()).Where("address = ? and tick_hash = ?", address, tickHash).First(&model).Error; err != nil {
+	if err = h.selectByAddress(db, address).Where("tick_hash in ?", tickHash).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
-	return &model, nil
+	return model, nil
+}
+func (h *AccountWalletHandler) SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error) {
+	var (
+		model []*AccountWalletModel
+		err   error
+	)
+
+	if err = h.selectByAddress(db, address).Find(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return model, nil
 }
 
 func (h *AccountWalletHandler) Create(db *gorm.DB, model *AccountWalletModel) error {

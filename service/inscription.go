@@ -1,9 +1,10 @@
 package service
 
 import (
-	"github.com/jwrookie/fans/dao"
-	"github.com/jwrookie/fans/pkg/database"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
+	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/database"
+	bnb48types "bnb-48-ins-indexer/pkg/types"
+
 	"gorm.io/gorm"
 )
 
@@ -42,6 +43,12 @@ func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bn
 		}
 		if req.TickHash != "" {
 			tx = tx.Where("tick_hash = ?", req.TickHash)
+		}
+		if req.Tick != "" {
+			tx = tx.Where("tick = ?", req.Tick)
+		}
+		if req.DeployBy != "" {
+			tx = tx.Where("deploy_by = ?", req.DeployBy)
 		}
 		var err error
 		res, err = s.inscriptionDao.Find(tx)

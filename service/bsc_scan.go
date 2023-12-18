@@ -7,16 +7,18 @@ import (
 	"strings"
 	"time"
 
+	"bnb-48-ins-indexer/config"
+	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/database"
+	"bnb-48-ins-indexer/pkg/global"
+	"bnb-48-ins-indexer/pkg/helper"
+	"bnb-48-ins-indexer/pkg/log"
+	"bnb-48-ins-indexer/pkg/utils"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/jwrookie/fans/config"
-	"github.com/jwrookie/fans/dao"
-	"github.com/jwrookie/fans/pkg/database"
-	"github.com/jwrookie/fans/pkg/global"
-	"github.com/jwrookie/fans/pkg/log"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
-	"github.com/jwrookie/fans/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -93,7 +95,14 @@ func (s *BscScanService) Scan() error {
 	block := s.conf.BscIndex.ScanBlock
 
 	for {
-		targetBlock, err := global.BscClient.BlockByNumber(context.TODO(), big.NewInt(int64(block)))
+		targetBN := new(big.Int).SetUint64(block)
+		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
+		if err != nil || int64(targetBlockHeader.Time-45) > time.Now().Unix() {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), targetBN)
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				time.Sleep(time.Second)
@@ -170,7 +179,7 @@ func (s *BscScanService) recap() error {
 	return nil
 }
 
-func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
+func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
 	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
@@ -263,14 +272,15 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 
 	// add record
 	record := &dao.AccountRecordsModel{
-		Block:   block.NumberU64(),
-		BlockAt: block.Time() * 1000,
-		TxHash:  tx.Hash().Hex(),
-		TxIndex: uint64(index),
-		From:    from,
-		To:      strings.ToLower(tx.To().Hex()),
-		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
-		Type:    1, // mint
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time() * 1000,
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: insc.TickHash,
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     1, // mint
 	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return err
@@ -295,7 +305,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	return nil
 }
 
-func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) error {
+func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
@@ -323,7 +333,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 	return nil
 }
 
-func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *bnb48types.BNB48Inscription, index int) (*big.Int, error) {
+func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) (*big.Int, error) {
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	zero := new(big.Int)
 
@@ -377,13 +387,14 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 
 	// add record for tx from
 	record := &dao.AccountRecordsModel{
-		Block:   block.NumberU64(),
-		TxHash:  tx.Hash().Hex(),
-		TxIndex: uint64(index),
-		From:    from,
-		To:      strings.ToLower(tx.To().Hex()),
-		Input:   strings.ToLower("0x" + common.Bytes2Hex(tx.Data())),
-		Type:    2, // transfer
+		Block:    block.NumberU64(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: inscription.TickHash,
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     2, // transfer
 	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return nil, err

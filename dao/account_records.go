@@ -1,8 +1,10 @@
 package dao
 
 import (
-	"gorm.io/gorm"
+	"bnb-48-ins-indexer/pkg/helper"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type IAccountRecords interface {
@@ -13,18 +15,20 @@ type IAccountRecords interface {
 }
 
 type AccountRecordsModel struct {
-	Id       uint64 `json:"id,string" gorm:"primaryKey"`
-	Block    uint64 `json:"block"`
-	BlockAt  uint64 `json:"block_at"`
-	TxHash   string `json:"tx_hash"`
-	TxIndex  uint64 `json:"tx_index"`
-	From     string `json:"from"`
-	To       string `json:"to"`
-	Input    string `json:"input"`
-	Type     uint8  `json:"type"`
-	CreateAt int64  `json:"create_at"`
-	UpdateAt int64  `json:"update_at"`
-	DeleteAt int64  `json:"delete_at"`
+	Id          uint64                   `json:"id,string" gorm:"primaryKey"`
+	Block       uint64                   `json:"block"`
+	BlockAt     uint64                   `json:"block_at"`
+	TxHash      string                   `json:"tx_hash"`
+	TxIndex     uint64                   `json:"tx_index"`
+	TickHash    string                   `json:"tick_hash"`
+	From        string                   `json:"from"`
+	To          string                   `json:"to"`
+	Input       string                   `json:"input"`
+	InputDecode *helper.BNB48Inscription `json:"input_decode" gorm:"-"`
+	Type        uint8                    `json:"type"`
+	CreateAt    int64                    `json:"create_at"`
+	UpdateAt    int64                    `json:"update_at"`
+	DeleteAt    int64                    `json:"delete_at"`
 }
 
 type AccountRecordsHandler struct {

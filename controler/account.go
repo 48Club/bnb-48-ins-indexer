@@ -1,10 +1,12 @@
 package controler
 
 import (
+	"bnb-48-ins-indexer/dao"
+	bnb48types "bnb-48-ins-indexer/pkg/types"
+	"bnb-48-ins-indexer/pkg/utils"
+	"bnb-48-ins-indexer/service"
+
 	"github.com/gin-gonic/gin"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
-	"github.com/jwrookie/fans/pkg/utils"
-	"github.com/jwrookie/fans/service"
 )
 
 type AccountController struct {
@@ -46,5 +48,31 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 		return
 	}
 
+	if c.checkBalance(req, res) != nil {
+		utils.FailResponse(ctx, err.Error())
+		return
+	}
+
 	utils.SuccessResponse(ctx, res)
+}
+
+func (c *AccountController) checkBalance(req bnb48types.AccountBalanceReq, res *bnb48types.AccountBalanceRsp) error {
+	var (
+		inss               = []*dao.InscriptionModel{}
+		decimalsByTickHash = map[string]uint8{}
+	)
+
+	if err := c.accountS.GetInscription(req.TickHash, &inss); err != nil || len(inss) == 0 {
+		return err
+	}
+
+	for _, v := range inss {
+		decimalsByTickHash[v.TickHash] = v.Decimals
+	}
+
+	for k, v := range res.Wallet {
+		res.Wallet[k].Decimals = decimalsByTickHash[v.TickHash]
+	}
+
+	return nil
 }

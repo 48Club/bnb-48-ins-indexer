@@ -1,16 +1,17 @@
 package utils
 
 import (
+	"bnb-48-ins-indexer/pkg/helper"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	bnb48types "github.com/jwrookie/fans/pkg/types"
 	"math/big"
 	"regexp"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 var (
@@ -48,7 +49,7 @@ func StringToBigint(data string) (*big.Int, error) {
 	return bigint, nil
 }
 
-func InputToBNB48Inscription(str string) (*bnb48types.BNB48Inscription, error) {
+func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
 	if str[:2] == "0x" {
 		str = str[2:]
 	}
@@ -62,7 +63,7 @@ func InputToBNB48Inscription(str string) (*bnb48types.BNB48Inscription, error) {
 	if utfStr[:6] == "data:," {
 		utfStr = utfStr[6:]
 
-		obj := &bnb48types.BNB48Inscription{}
+		obj := &helper.BNB48Inscription{}
 		err := json.Unmarshal([]byte(utfStr), obj)
 		if err != nil {
 			return nil, err

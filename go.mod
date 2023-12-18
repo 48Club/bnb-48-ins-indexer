@@ -1,8 +1,9 @@
-module github.com/jwrookie/fans
+module bnb-48-ins-indexer
 
 go 1.20
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.1
 	github.com/ethereum/go-ethereum v1.13.5
 	github.com/gin-gonic/gin v1.9.1
 	github.com/sony/sonyflake v1.2.0
@@ -17,7 +18,6 @@ require (
 )
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.7.0 // indirect

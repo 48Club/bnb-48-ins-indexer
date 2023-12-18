@@ -14,7 +14,7 @@ request body(json)
 }
 ```
 
-response(json)
+response(json) (sorted by balance desc)
 
 ```
 {
@@ -61,12 +61,13 @@ request body(json)
 
 ```
 {
+"tick_hash" string
 "page" int
 "page_size" int (required, 1~256)
 }
 ```
 
-response(json)
+response(json) (sorted by block_at desc, tx_index desc)
 
 ```
 {
@@ -116,6 +117,8 @@ request body(json)
 "page_size" int (required, 1~256)
 "protocol" string
 "tick_hash" string
+"tick" string
+"deploy_by" string
 "status" (0:all:, 1:in_progress, 2:completed)
 }
 ```
@@ -147,6 +150,7 @@ response(json)
                 "holders" : int,
                 "deploy_by" : string,
                 "protocol": string,
+                "information" string, # information is url or "", if url, add <a href="information"><image/></a> tag
                 "create_at": int,
                 "update_at": int,
                 "delete_at": int
@@ -172,7 +176,7 @@ request body(json)
 
 ```
 {
-"tick_hash" string (required)
+"tick_hash" []string
 "address" string (required)
 }
 ```
@@ -184,17 +188,32 @@ response(json)
     "code": 0,
     "msg": "ok",
     "data": {
-        "wallet": {
-            "id": int,
-            "account_id": int,
-            "address": string,
-            "tick": string,
-            "tick_hash": string,
-            "balance": string,
-            "create_at": int,
-            "update_at": int,
-            "delete_at": int
-        }
+        "wallet": [
+            {
+                "id": int,
+                "account_id": int,
+                "address": string,
+                "tick": string,
+                "tick_hash": string,
+                "balance": string,
+                "decimals": int,
+                "create_at": int,
+                "update_at": int,
+                "delete_at": int
+            },
+            {
+                "id": int,
+                "account_id": int,
+                "address": string,
+                "tick": string,
+                "tick_hash": string,
+                "balance": string,
+                "decimals": int,
+                "create_at": int,
+                "update_at": int,
+                "delete_at": int
+            }
+        ]
     }
 }
 ```
