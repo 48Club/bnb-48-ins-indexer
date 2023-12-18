@@ -49,7 +49,7 @@ func (h *AccountRecordsHandler) Create(db *gorm.DB, model *AccountRecordsModel) 
 		}
 	}
 
-	model.CreateAt = time.Now().UnixMilli()
+	model.CreateAt = time.Now().Unix()
 	model.UpdateAt = model.CreateAt
 
 	return db.Table(h.TableName()).Create(model).Error

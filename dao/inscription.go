@@ -84,7 +84,7 @@ func (h *InscriptionHandler) Create(db *gorm.DB, model *InscriptionModel) error 
 		}
 	}
 
-	model.CreateAt = time.Now().UnixMilli()
+	model.CreateAt = time.Now().Unix()
 	model.UpdateAt = model.CreateAt
 
 	return db.Table(h.TableName()).Create(model).Error
@@ -108,7 +108,7 @@ func (h *InscriptionHandler) UpdateHolders(db *gorm.DB, tick string, delta int64
 func (h *InscriptionHandler) Update(db *gorm.DB, id uint64, data map[string]interface{}) error {
 	var err error
 
-	data["update_at"] = time.Now().UnixMilli()
+	data["update_at"] = time.Now().Unix()
 	if err = db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error; err != nil {
 		return err
 	}
