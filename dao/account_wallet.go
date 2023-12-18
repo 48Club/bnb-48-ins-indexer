@@ -11,7 +11,7 @@ type IAccountWallet interface {
 	Create(db *gorm.DB, model *AccountWalletModel) error
 	UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error
 	SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error)
-	SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error)
+	SelectByTickHash(db *gorm.DB, tickHash []string) ([]*AccountWalletModel, error)
 	SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error)
 	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
@@ -79,13 +79,13 @@ func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId 
 	return &model, nil
 }
 
-func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error) {
+func (h *AccountWalletHandler) SelectByTickHash(db *gorm.DB, tickHash []string) ([]*AccountWalletModel, error) {
 	var (
 		model []*AccountWalletModel
 		err   error
 	)
 
-	if err = db.Table(h.TableName()).Where("address = ?", address).Where("tick_hash in ?", tickHash).Find(&model).Error; err != nil {
+	if err = db.Table(h.TableName()).Where("tick_hash in ?", tickHash).Find(&model).Error; err != nil {
 		return nil, err
 	}
 

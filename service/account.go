@@ -28,7 +28,7 @@ func (s *AccountService) Balance(req bnb48types.AccountBalanceReq) (*bnb48types.
 		if len(req.TickHash) == 0 {
 			res, err = s.walletDao.SelectByAddress(tx, req.Address)
 		} else {
-			res, err = s.walletDao.SelectByAddressTickHash(tx, req.Address, req.TickHash)
+			res, err = s.walletDao.SelectByTickHash(tx, req.TickHash)
 		}
 
 		if err != nil {
@@ -86,6 +86,6 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 	return resp, nil
 }
 
-func (s *AccountService) GetInscription(insTickHashs []string, inss *[]*dao.InscriptionModel) {
-	_ = database.Mysql().Table("inscription").Where("tick_hash in ?", insTickHashs).Find(&inss)
+func (s *AccountService) GetInscription(insTickHashs []string, inss *[]*dao.InscriptionModel) error {
+	return database.Mysql().Table("inscription").Where("tick_hash in ?", insTickHashs).Find(&inss).Error
 }
