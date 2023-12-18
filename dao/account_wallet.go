@@ -79,26 +79,29 @@ func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId 
 	return &model, nil
 }
 
+func (h *AccountWalletHandler) selectByAddress(db *gorm.DB, address string) *gorm.DB {
+	return db.Table(h.TableName()).Where("address = ?", address)
+}
+
 func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error) {
 	var (
 		model []*AccountWalletModel
 		err   error
 	)
 
-	if err = db.Table(h.TableName()).Where("address = ?", address).Where("tick_hash in ?", tickHash).Find(&model).Error; err != nil {
+	if err = h.selectByAddress(db, address).Where("tick_hash in ?", tickHash).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
 	return model, nil
 }
-
 func (h *AccountWalletHandler) SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error) {
 	var (
 		model []*AccountWalletModel
 		err   error
 	)
 
-	if err = db.Table(h.TableName()).Where("address = ? ", address).Find(&model).Error; err != nil {
+	if err = h.selectByAddress(db, address).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
