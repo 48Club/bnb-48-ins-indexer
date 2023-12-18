@@ -150,6 +150,7 @@ response(json)
                 "holders" : int,
                 "deploy_by" : string,
                 "protocol": string,
+                "information" string, # information is url or "", if url, add <a href="information"><image/></a> tag
                 "create_at": int,
                 "update_at": int,
                 "delete_at": int

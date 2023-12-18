@@ -17,24 +17,25 @@ type IInscription interface {
 }
 
 type InscriptionModel struct {
-	Id       uint64 `json:"id,string" gorm:"primaryKey"`
-	Tick     string `json:"tick"`
-	TickHash string `json:"tick_hash"`
-	TxIndex  uint64 `json:"tx_index"`
-	Block    uint64 `json:"block"`
-	BlockAt  uint64 `json:"block_at"`
-	Decimals uint8  `json:"decimals"`
-	Max      string `json:"max"`
-	Lim      string `json:"lim"`
-	Miners   string `json:"miners"`
-	Minted   string `json:"minted"`
-	Status   uint64 `json:"status"`
-	Protocol string `json:"protocol"`
-	Holders  uint64 `json:"holders"`
-	DeployBy string `json:"deploy_by"`
-	CreateAt int64  `json:"create_at"`
-	UpdateAt int64  `json:"update_at"`
-	DeleteAt int64  `json:"delete_at"`
+	Id          uint64 `json:"id,string" gorm:"primaryKey"`
+	Tick        string `json:"tick"`
+	TickHash    string `json:"tick_hash"`
+	TxIndex     uint64 `json:"tx_index"`
+	Block       uint64 `json:"block"`
+	BlockAt     uint64 `json:"block_at"`
+	Decimals    uint8  `json:"decimals"`
+	Max         string `json:"max"`
+	Lim         string `json:"lim"`
+	Miners      string `json:"miners"`
+	Minted      string `json:"minted"`
+	Status      uint64 `json:"status"`
+	Protocol    string `json:"protocol"`
+	Holders     uint64 `json:"holders"`
+	Information string `json:"information"`
+	DeployBy    string `json:"deploy_by"`
+	CreateAt    int64  `json:"create_at"`
+	UpdateAt    int64  `json:"update_at"`
+	DeleteAt    int64  `json:"delete_at"`
 }
 
 type InscriptionHandler struct{}
