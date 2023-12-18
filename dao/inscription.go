@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -90,19 +91,15 @@ func (h *InscriptionHandler) Create(db *gorm.DB, model *InscriptionModel) error 
 }
 
 func (h *InscriptionHandler) UpdateHolders(db *gorm.DB, tick string, delta int64) error {
-	// var err error
-	var res []*InscriptionModel
+	var res *InscriptionModel
 	db = db.Where("tick = ? ", tick)
-	if err := db.Table(h.TableName()).Find(&res).Error; err != nil {
+	if err := db.Table(h.TableName()).First(&res).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("tick %s invalid", tick)
+	} else if err != nil {
 		return err
 	}
-	if len(res) == 0 {
-		return fmt.Errorf("tick %s invalid", tick)
-	}
-	model := res[0]
-	holders := int64(model.Holders) + delta
-	model.Holders += uint64(holders)
-	if err := db.Table(h.TableName()).Save(model).Error; err != nil {
+
+	if err := db.Table(h.TableName()).Where("tick = ?", tick).Update("holders", int64(res.Holders)+delta).Error; err != nil {
 		return err
 	}
 	return nil
