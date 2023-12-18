@@ -273,7 +273,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	// add record
 	record := &dao.AccountRecordsModel{
 		Block:    block.NumberU64(),
-		BlockAt:  block.Time() * 1000,
+		BlockAt:  block.Time(),
 		TxHash:   tx.Hash().Hex(),
 		TxIndex:  uint64(index),
 		TickHash: insc.TickHash,
@@ -391,6 +391,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		TxHash:   tx.Hash().Hex(),
 		TxIndex:  uint64(index),
 		TickHash: inscription.TickHash,
+		BlockAt:  block.Time(),
 		From:     from,
 		To:       strings.ToLower(tx.To().Hex()),
 		Input:    hexutil.Encode(tx.Data()),
