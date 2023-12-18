@@ -1,8 +1,9 @@
 package dao
 
 import (
-	"bnb-48-ins-indexer/pkg/helper"
 	"time"
+
+	"bnb-48-ins-indexer/pkg/helper"
 
 	"gorm.io/gorm"
 )
@@ -19,6 +20,7 @@ type AccountRecordsModel struct {
 	Block       uint64                   `json:"block"`
 	BlockAt     uint64                   `json:"block_at"`
 	TxHash      string                   `json:"tx_hash"`
+	OpIndex     uint64                   `json:"op_index"`
 	TxIndex     uint64                   `json:"tx_index"`
 	TickHash    string                   `json:"tick_hash"`
 	From        string                   `json:"from"`
@@ -31,8 +33,7 @@ type AccountRecordsModel struct {
 	DeleteAt    int64                    `json:"delete_at"`
 }
 
-type AccountRecordsHandler struct {
-}
+type AccountRecordsHandler struct{}
 
 func (h *AccountRecordsHandler) TableName() string {
 	return "account_records"
