@@ -139,12 +139,7 @@ func (s *BscScanService) work(block *types.Block) error {
 }
 
 func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transaction, index int) error {
-	input := "0x" + common.Bytes2Hex(tx.Data())
-	if !strings.HasPrefix(input, global.BNB48Prefix) {
-		return nil
-	}
-
-	data, err := utils.InputToBNB48Inscription(input)
+	data, err := utils.InputToBNB48Inscription(hexutil.Encode(tx.Data()))
 	if err != nil {
 		log.Sugar.Error(err)
 		return nil

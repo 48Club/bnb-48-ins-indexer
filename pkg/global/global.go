@@ -6,10 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-const (
-	BNB48Prefix = "0x646174613a2c7b2270223a22626e622d3438222c226f70223a22"
-)
-
 var (
 	BscClient *ethclient.Client
 )
