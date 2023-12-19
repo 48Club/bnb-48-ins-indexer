@@ -1,17 +1,15 @@
 package utils
 
 import (
-	"encoding/hex"
+	"bnb-48-ins-indexer/pkg/helper"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"regexp"
 	"strings"
 
-	"bnb-48-ins-indexer/pkg/helper"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -35,7 +33,7 @@ func GetTxFrom(tx *types.Transaction) common.Address {
 
 func StringToBigint(data string) (*big.Int, error) {
 	if strings.HasPrefix(data, "-") {
-		return nil, errors.New(fmt.Sprintf("%s invaild, can not support neg", data))
+		return nil, fmt.Errorf("%s invaild, can not support neg", data)
 	}
 
 	if data == "" {
@@ -44,18 +42,15 @@ func StringToBigint(data string) (*big.Int, error) {
 
 	bigint, ok := new(big.Int).SetString(data, 10)
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("%s invaild, can not parse to bigint", data))
+		return nil, fmt.Errorf("%s invaild, can not parse to bigint", data)
 	}
 
 	return bigint, nil
 }
 
 func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
-	if str[:2] == "0x" {
-		str = str[2:]
-	}
 
-	bytes, err := hex.DecodeString(str)
+	bytes, err := hexutil.Decode(str)
 	if err != nil {
 		return nil, err
 	}
