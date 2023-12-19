@@ -90,16 +90,16 @@ func (h *InscriptionHandler) Create(db *gorm.DB, model *InscriptionModel) error 
 	return db.Table(h.TableName()).Create(model).Error
 }
 
-func (h *InscriptionHandler) UpdateHolders(db *gorm.DB, tick string, delta int64) error {
+func (h *InscriptionHandler) UpdateHolders(db *gorm.DB, tick_hash string, delta int64) error {
 	var res *InscriptionModel
-	db = db.Where("tick = ? ", tick)
+	db = db.Where("tick_hash = ? ", tick_hash)
 	if err := db.Table(h.TableName()).First(&res).Error; errors.Is(err, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("tick %s invalid", tick)
+		return fmt.Errorf("tick %s invalid", tick_hash)
 	} else if err != nil {
 		return err
 	}
 
-	if err := db.Table(h.TableName()).Where("tick = ?", tick).Update("holders", int64(res.Holders)+delta).Error; err != nil {
+	if err := db.Table(h.TableName()).Update("holders", int64(res.Holders)+delta).Error; err != nil {
 		return err
 	}
 	return nil
