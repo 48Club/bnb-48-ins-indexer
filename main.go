@@ -19,9 +19,9 @@ func main() {
 
 func init() {
 	PendingTxs = types.GlobalVariable{
-		Txs:        mapset.NewSet[dao.AccountRecordsModel](),
+		Txs:        mapset.NewSet[*dao.AccountRecordsModel](),
 		TxsInBlock: mapset.NewSet[uint64](),
-		TxsByAddr:  map[common.Address]mapset.Set[dao.AccountRecordsModel]{},
+		TxsByAddr:  map[common.Address]map[string]mapset.Set[dao.AccountRecordsModel]{},
 		BlockAt:    common.Big0,
 	}
 }

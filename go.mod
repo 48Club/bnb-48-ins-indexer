@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.1
+	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/ethereum/go-ethereum v1.13.5
 	github.com/gin-gonic/gin v1.9.1
 	github.com/sony/sonyflake v1.2.0
@@ -28,7 +29,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect

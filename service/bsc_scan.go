@@ -110,14 +110,17 @@ func (s *BscScanService) checkPendingTxs(beginBN *big.Int) {
 
 		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
 		for addr, records := range _tmpTxsByAddr {
-			for _, v := range records.ToSlice() {
-				if s.pendingTxs.TxsInBlock.Contains(v.Block) {
-					continue
+			for tk_hash, v := range records {
+				_tmpRecords := v.ToSlice()
+				for _, v := range _tmpRecords {
+					if s.pendingTxs.TxsInBlock.Contains(v.Block) {
+						continue
+					}
+					_tmpTxsByAddr[addr][tk_hash].Remove(v)
+					s.pendingTxs.Txs.Remove(&v)
 				}
-
-				_tmpTxsByAddr[addr].Remove(v)
-				s.pendingTxs.Txs.Remove(v)
 			}
+
 		}
 		s.pendingTxs.TxsByAddr = _tmpTxsByAddr
 	}
@@ -283,6 +286,25 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	// account
 	account, err := s.account.SelectByAddress(db, from)
+	// add record
+
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: insc.TickHash,
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     1, // mint
+	}
+
+	if len(isPending) > 0 && isPending[0] {
+		s.updateRam(record, block)
+		return nil
+	}
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			account = &dao.AccountModel{Address: from}
@@ -336,38 +358,6 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		}
 	}
 
-	// add record
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		BlockAt:  block.Time(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		TickHash: insc.TickHash,
-		From:     from,
-		To:       strings.ToLower(tx.To().Hex()),
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     1, // mint
-	}
-
-	if len(isPending) > 0 && isPending[0] {
-		record.IsPending = true
-		s.pendingTxs.Txs.Add(*record)
-
-		fAddr := common.HexToAddress(record.From)
-		if _, ok := s.pendingTxs.TxsByAddr[fAddr]; !ok {
-			s.pendingTxs.TxsByAddr[fAddr] = mapset.NewSet[dao.AccountRecordsModel]()
-		}
-		s.pendingTxs.TxsByAddr[fAddr].Add(*record)
-
-		tAddr := common.HexToAddress(record.To)
-		if _, ok := s.pendingTxs.TxsByAddr[tAddr]; !ok {
-			s.pendingTxs.TxsByAddr[tAddr] = mapset.NewSet[dao.AccountRecordsModel]()
-		}
-		s.pendingTxs.TxsByAddr[tAddr].Add(*record)
-
-		s.pendingTxs.TxsInBlock.Add(block.NumberU64())
-		return nil
-	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return err
 	}
@@ -404,7 +394,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
-	amt, err := s.transferForFrom(db, block, tx, inscription, index)
+	amt, err := s.transferForFrom(db, block, tx, inscription, index, isPending...)
 	if err != nil {
 		return err
 	}
@@ -412,14 +402,14 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
-	if err = s.transferForTo(db, amt, insc, inscription.To); err != nil {
+	if err = s.transferForTo(db, amt, insc, inscription.To, isPending...); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) (*big.Int, error) {
+func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) (*big.Int, error) {
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	zero := new(big.Int)
 
@@ -458,6 +448,24 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		return zero, nil
 	}
 
+	// add record for tx from
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: inscription.TickHash,
+		BlockAt:  block.Time(),
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     2, // transfer
+	}
+
+	if len(isPending) > 0 && isPending[0] {
+		s.updateRam(record, block)
+		return amt, nil
+	}
+
 	balance := new(big.Int).Sub(currentBalance, amt)
 	updates := map[string]interface{}{
 		"balance": balance.String(),
@@ -471,18 +479,6 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		}
 	}
 
-	// add record for tx from
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		TickHash: inscription.TickHash,
-		BlockAt:  block.Time(),
-		From:     from,
-		To:       strings.ToLower(tx.To().Hex()),
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     2, // transfer
-	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return nil, err
 	}
@@ -494,7 +490,10 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	return amt, nil
 }
 
-func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string) error {
+func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string, isPending ...bool) error {
+	if len(isPending) > 0 && isPending[0] {
+		return nil
+	}
 	// account
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
@@ -558,4 +557,27 @@ func (s *BscScanService) approve() error {
 
 func (s *BscScanService) transferFrom() error {
 	return nil
+}
+
+func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
+	record.IsPending = true
+	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input)
+
+	s.pendingTxs.Txs.Add(record)
+
+	fAddr := common.HexToAddress(record.From)
+	if _, ok := s.pendingTxs.TxsByAddr[fAddr]; !ok {
+		s.pendingTxs.TxsByAddr[fAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{}
+		s.pendingTxs.TxsByAddr[fAddr][record.TickHash] = mapset.NewSet[dao.AccountRecordsModel]()
+	}
+	s.pendingTxs.TxsByAddr[fAddr][record.TickHash].Add(*record)
+
+	tAddr := common.HexToAddress(record.To)
+	if _, ok := s.pendingTxs.TxsByAddr[tAddr]; !ok {
+		s.pendingTxs.TxsByAddr[tAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{}
+		s.pendingTxs.TxsByAddr[tAddr][record.TickHash] = mapset.NewSet[dao.AccountRecordsModel]()
+	}
+	s.pendingTxs.TxsByAddr[tAddr][record.TickHash].Add(*record)
+
+	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
 }
