@@ -565,6 +565,9 @@ func (s *BscScanService) transferFrom() error {
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
+	if s.pendingTxs.TxsInBlock.Contains(block.NumberU64()) {
+		return
+	}
 	record.IsPending = true
 	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input)
 
