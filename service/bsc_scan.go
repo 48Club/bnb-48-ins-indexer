@@ -17,6 +17,7 @@ import (
 
 	types2 "bnb-48-ins-indexer/pkg/types"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -91,6 +92,64 @@ func (s *BscScanService) init() error {
 	return nil
 }
 
+func (s *BscScanService) checkPendingTxs(beginBN *big.Int) {
+
+	{
+		// 删除已经确认的交易
+		_tmpTxsInBlock := s.pendingTxs.TxsInBlock
+		for _, bn := range s.pendingTxs.TxsInBlock.ToSlice() {
+			targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), new(big.Int).SetUint64(bn))
+			if err != nil {
+				continue
+			}
+			if time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
+				_tmpTxsInBlock.Remove(bn)
+			}
+		}
+		s.pendingTxs.TxsInBlock = _tmpTxsInBlock
+
+		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
+		for addr, records := range _tmpTxsByAddr {
+			for _, v := range records.ToSlice() {
+				if s.pendingTxs.TxsInBlock.Contains(v.Block) {
+					continue
+				}
+
+				_tmpTxsByAddr[addr].Remove(v)
+				s.pendingTxs.Txs.Remove(v)
+			}
+		}
+		s.pendingTxs.TxsByAddr = _tmpTxsByAddr
+	}
+	{
+		// 添加新的交易
+		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), nil)
+		if err != nil {
+			return
+		}
+		if s.pendingTxs.BlockAt.Cmp(common.Big0) == 0 {
+			// 更新区块高度
+			s.pendingTxs.BlockAt = beginBN
+		}
+		for {
+			targetBlock, err := global.BscClient.BlockByNumber(context.Background(), s.pendingTxs.BlockAt)
+			if err != nil {
+				time.Sleep(time.Second)
+				continue
+			}
+
+			if err = s.work(targetBlock, true); err != nil {
+				return
+			}
+			if s.pendingTxs.BlockAt.Cmp(targetBlockHeader.Number) == 0 {
+				break
+			}
+
+			s.pendingTxs.BlockAt = new(big.Int).Add(s.pendingTxs.BlockAt, common.Big1)
+		}
+	}
+
+}
 func (s *BscScanService) Scan() error {
 	var err error
 	if err = s.init(); err != nil {
@@ -100,11 +159,18 @@ func (s *BscScanService) Scan() error {
 	block := s.conf.BscIndex.ScanBlock
 
 	for {
-		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), new(big.Int).SetUint64(block))
-		if err != nil || time.Now().Unix()-int64(targetBlock.Time()) < 45 {
+
+		targetBN := new(big.Int).SetUint64(block)
+		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
+		if err == nil {
+			go s.checkPendingTxs(targetBlockHeader.Number)
+		}
+		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
 			time.Sleep(time.Second)
 			continue
 		}
+
+		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), new(big.Int).SetUint64(block))
 
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
@@ -128,12 +194,12 @@ func (s *BscScanService) Scan() error {
 	}
 }
 
-func (s *BscScanService) work(block *types.Block) error {
+func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 	db := database.Mysql().Begin()
 	defer db.Rollback()
 
 	for index, tx := range block.Transactions() {
-		if err := s._work(db, block, tx, index); err != nil {
+		if err := s._work(db, block, tx, index, isPending...); err != nil {
 			return err
 		}
 	}
@@ -141,7 +207,7 @@ func (s *BscScanService) work(block *types.Block) error {
 	return db.Commit().Error
 }
 
-func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transaction, index int) error {
+func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, isPending ...bool) error {
 	data, err := utils.InputToBNB48Inscription(hexutil.Encode(tx.Data()))
 	if err != nil {
 		log.Sugar.Error(err)
@@ -154,11 +220,11 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 	case "deploy":
 	case "recap":
 	case "mint":
-		if err = s.mint(db, block, tx, data, index); err != nil {
+		if err = s.mint(db, block, tx, data, index, isPending...); err != nil {
 			return err
 		}
 	case "transfer":
-		if err = s.transfer(db, block, tx, data, index); err != nil {
+		if err = s.transfer(db, block, tx, data, index, isPending...); err != nil {
 			return err
 		}
 	case "burn":
@@ -179,7 +245,7 @@ func (s *BscScanService) recap() error {
 	return nil
 }
 
-func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
+func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) error {
 	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
@@ -282,6 +348,26 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		Input:    hexutil.Encode(tx.Data()),
 		Type:     1, // mint
 	}
+
+	if len(isPending) > 0 && isPending[0] {
+		record.IsPending = true
+		s.pendingTxs.Txs.Add(*record)
+
+		fAddr := common.HexToAddress(record.From)
+		if _, ok := s.pendingTxs.TxsByAddr[fAddr]; !ok {
+			s.pendingTxs.TxsByAddr[fAddr] = mapset.NewSet[dao.AccountRecordsModel]()
+		}
+		s.pendingTxs.TxsByAddr[fAddr].Add(*record)
+
+		tAddr := common.HexToAddress(record.To)
+		if _, ok := s.pendingTxs.TxsByAddr[tAddr]; !ok {
+			s.pendingTxs.TxsByAddr[tAddr] = mapset.NewSet[dao.AccountRecordsModel]()
+		}
+		s.pendingTxs.TxsByAddr[tAddr].Add(*record)
+
+		s.pendingTxs.TxsInBlock.Add(block.NumberU64())
+		return nil
+	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return err
 	}
@@ -305,7 +391,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	return nil
 }
 
-func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
+func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) error {
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
