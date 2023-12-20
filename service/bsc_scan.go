@@ -155,6 +155,9 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 
 	switch data.Op {
 	case "deploy":
+		if err = s.deploy(db, block, tx, data, index); err != nil {
+			return err
+		}
 	case "recap":
 	case "mint":
 		if err = s.mint(db, block, tx, data, index); err != nil {
