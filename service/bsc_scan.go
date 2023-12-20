@@ -92,32 +92,35 @@ func (s *BscScanService) init() error {
 	return nil
 }
 
-func (s *BscScanService) checkPendingTxs(beginBN *big.Int) {
+func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 
 	{
 		// 删除已经确认的交易
 		_tmpTxsInBlock := s.pendingTxs.TxsInBlock
-		for _, bn := range s.pendingTxs.TxsInBlock.ToSlice() {
-			targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), new(big.Int).SetUint64(bn))
-			if err != nil {
-				continue
+		if _tmpTxsInBlock.Cardinality() > 0 {
+			for _, bn := range s.pendingTxs.TxsInBlock.ToSlice() {
+				if beginBH.Number.Uint64()-bn >= 15 {
+					_tmpTxsInBlock.Remove(bn)
+				}
 			}
-			if time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
-				_tmpTxsInBlock.Remove(bn)
-			}
+			s.pendingTxs.TxsInBlock = _tmpTxsInBlock
 		}
-		s.pendingTxs.TxsInBlock = _tmpTxsInBlock
 
 		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
 		for addr, records := range _tmpTxsByAddr {
 			for tk_hash, v := range records {
+				if v.Cardinality() == 0 {
+					continue
+				}
 				_tmpRecords := v.ToSlice()
 				for _, v := range _tmpRecords {
 					if s.pendingTxs.TxsInBlock.Contains(v.Block) {
 						continue
 					}
+
 					_tmpTxsByAddr[addr][tk_hash].Remove(v)
 					s.pendingTxs.Txs.Remove(&v)
+					s.pendingTxs.TxsByTickHash[tk_hash].Remove(&v)
 				}
 			}
 
@@ -132,7 +135,7 @@ func (s *BscScanService) checkPendingTxs(beginBN *big.Int) {
 		}
 		if s.pendingTxs.BlockAt.Cmp(common.Big0) == 0 {
 			// 更新区块高度
-			s.pendingTxs.BlockAt = beginBN
+			s.pendingTxs.BlockAt = beginBH.Number
 		}
 		for {
 			targetBlock, err := global.BscClient.BlockByNumber(context.Background(), s.pendingTxs.BlockAt)
@@ -166,7 +169,7 @@ func (s *BscScanService) Scan() error {
 		targetBN := new(big.Int).SetUint64(block)
 		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
 		if err == nil {
-			go s.checkPendingTxs(targetBlockHeader.Number)
+			go s.checkPendingTxs(targetBlockHeader)
 		}
 		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
 			time.Sleep(time.Second)
@@ -205,6 +208,9 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 		if err := s._work(db, block, tx, index, isPending...); err != nil {
 			return err
 		}
+	}
+	if len(isPending) > 0 {
+		return db.Rollback().Error
 	}
 
 	return db.Commit().Error
@@ -302,7 +308,6 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 
 	if len(isPending) > 0 && isPending[0] {
 		s.updateRam(record, block)
-		return nil
 	}
 
 	if err != nil {
@@ -463,7 +468,6 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 
 	if len(isPending) > 0 && isPending[0] {
 		s.updateRam(record, block)
-		return amt, nil
 	}
 
 	balance := new(big.Int).Sub(currentBalance, amt)
@@ -491,9 +495,6 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 }
 
 func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string, isPending ...bool) error {
-	if len(isPending) > 0 && isPending[0] {
-		return nil
-	}
 	// account
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
@@ -567,17 +568,25 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 
 	fAddr := common.HexToAddress(record.From)
 	if _, ok := s.pendingTxs.TxsByAddr[fAddr]; !ok {
-		s.pendingTxs.TxsByAddr[fAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{}
-		s.pendingTxs.TxsByAddr[fAddr][record.TickHash] = mapset.NewSet[dao.AccountRecordsModel]()
+		s.pendingTxs.TxsByAddr[fAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{
+			record.TickHash: mapset.NewSet[dao.AccountRecordsModel](),
+		}
 	}
 	s.pendingTxs.TxsByAddr[fAddr][record.TickHash].Add(*record)
 
 	tAddr := common.HexToAddress(record.To)
 	if _, ok := s.pendingTxs.TxsByAddr[tAddr]; !ok {
-		s.pendingTxs.TxsByAddr[tAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{}
-		s.pendingTxs.TxsByAddr[tAddr][record.TickHash] = mapset.NewSet[dao.AccountRecordsModel]()
+		s.pendingTxs.TxsByAddr[tAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{
+			record.TickHash: mapset.NewSet[dao.AccountRecordsModel](),
+		}
 	}
 	s.pendingTxs.TxsByAddr[tAddr][record.TickHash].Add(*record)
 
 	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
+
+	if _, ok := s.pendingTxs.TxsByTickHash[record.TickHash]; !ok {
+		s.pendingTxs.TxsByTickHash[record.TickHash] = mapset.NewSet[*dao.AccountRecordsModel]()
+	}
+	s.pendingTxs.TxsByTickHash[record.TickHash].Add(record)
+
 }

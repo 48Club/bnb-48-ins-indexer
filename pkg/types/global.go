@@ -9,8 +9,9 @@ import (
 )
 
 type GlobalVariable struct {
-	Txs        mapset.Set[*dao.AccountRecordsModel]
-	TxsInBlock mapset.Set[uint64]
-	TxsByAddr  map[common.Address]map[string]mapset.Set[dao.AccountRecordsModel]
-	BlockAt    *big.Int
+	Txs           mapset.Set[*dao.AccountRecordsModel]
+	TxsByTickHash map[string]mapset.Set[*dao.AccountRecordsModel]
+	TxsInBlock    mapset.Set[uint64]
+	TxsByAddr     map[common.Address]map[string]mapset.Set[dao.AccountRecordsModel]
+	BlockAt       *big.Int
 }

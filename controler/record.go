@@ -30,7 +30,10 @@ func (c *RecordController) List(ctx *gin.Context) {
 	}
 
 	resList := []*dao.AccountRecordsModel{}
-	ramTx := c.pendingTxs.Txs.ToSlice()
+	ramTx := []*dao.AccountRecordsModel{}
+	if _ramTx, ok := c.pendingTxs.TxsByTickHash[req.TickHash]; ok && _ramTx.Cardinality() > 0 {
+		ramTx = _ramTx.ToSlice()
+	}
 	ramTxLen := int64(len(ramTx))
 	if ramTxLen > 0 {
 		if ramTxLen >= int64(req.PageSize)*(req.Page+1) {
