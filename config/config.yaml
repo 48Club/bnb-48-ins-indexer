@@ -5,7 +5,7 @@ bnb48_index:
   bsc_rpc: /opt/.ethereum/geth.ipc
 
 log:
-  dir: /www/logs
+  dir: /app/logs
   level: debug
   max_size: 1000 #mb
   max_backups: 100

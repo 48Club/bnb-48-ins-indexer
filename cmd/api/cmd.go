@@ -2,6 +2,7 @@ package api
 
 import (
 	"bnb-48-ins-indexer/config"
+	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/router"
@@ -14,21 +15,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
-func NewCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "api",
-		Short: "api",
-		Run: func(cmd *cobra.Command, args []string) {
-			setup()
-		},
-	}
-}
-
-func setup() {
+func Start(pendingTxs *[]dao.AccountRecordsModel) {
 	app := config.GetConfig().App
 	log.Init("api.log")
 	database.NewMysql()
@@ -52,13 +42,15 @@ func setup() {
 		})
 	}()
 
-	if err := httpSrv.ListenAndServe(); err != nil {
-		if err != http.ErrServerClosed {
-			log.Log.Fatal("failed to run status server",
-				zap.Error(err),
-			)
+	go func() {
+		if err := httpSrv.ListenAndServe(); err != nil {
+			if err != http.ErrServerClosed {
+				log.Log.Fatal("failed to run status server",
+					zap.Error(err),
+				)
+			}
 		}
-	}
+	}()
 }
 
 func WaitForSignal(callback func()) {

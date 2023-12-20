@@ -95,14 +95,12 @@ func (s *BscScanService) Scan() error {
 	block := s.conf.BscIndex.ScanBlock
 
 	for {
-		targetBN := new(big.Int).SetUint64(block)
-		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
-		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
+		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), new(big.Int).SetUint64(block))
+		if err != nil || time.Now().Unix()-int64(targetBlock.Time()) < 45 {
 			time.Sleep(time.Second)
 			continue
 		}
 
-		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), targetBN)
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				time.Sleep(time.Second)
