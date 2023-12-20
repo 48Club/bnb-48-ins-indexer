@@ -4,13 +4,13 @@ services:
   48club-ins:
     build:
       context: .
-      dockerfile: .
+      dockerfile: ./Dockerfile
     restart: always
     ports:
       - 0.0.0.0:8547:8888/tcp
     volumes:
       - ./config:/48club/config
-      - ./logs:/48club/logs
+      - /opt/data/bnb48_index/logs:/48club/logs
       - /root/.ethereum/:/opt/.ethereum/
     depends_on:
       - mysql
