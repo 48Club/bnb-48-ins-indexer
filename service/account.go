@@ -53,7 +53,7 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		countTx := tx.Session(&gorm.Session{Context: tx.Statement.Context})
 
-		tx = tx.Order("CAST(`balance` as UNSIGNED) DESC")
+		tx = tx.Order("CAST(`balance` as UNSIGNED) DESC").Where("CAST(`balance` as UNSIGNED) > 0")
 		if req.PageSize > 0 {
 			tx = tx.Limit(int(req.PageSize))
 		}
