@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"bnb-48-ins-indexer/pkg/utils"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -15,19 +17,21 @@ type IAccountWallet interface {
 	SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error)
 	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
+	LoadChanges(db *gorm.DB, model *AccountWalletModel) error
 }
 
 type AccountWalletModel struct {
-	Id        uint64 `json:"id,string" gorm:"primaryKey"`
-	AccountId uint64 `json:"account_id,string"`
-	Address   string `json:"address"`
-	Tick      string `json:"tick"`
-	TickHash  string `json:"tick_hash"`
-	Decimals  uint8  `json:"decimals" gorm:"-"`
-	Balance   string `json:"balance"`
-	CreateAt  int64  `json:"create_at"`
-	UpdateAt  int64  `json:"update_at"`
-	DeleteAt  int64  `json:"delete_at"`
+	Id        uint64                `json:"id,string" gorm:"primaryKey"`
+	AccountId uint64                `json:"account_id,string"`
+	Address   string                `json:"address"`
+	Tick      string                `json:"tick"`
+	TickHash  string                `json:"tick_hash"`
+	Decimals  uint8                 `json:"decimals" gorm:"-"`
+	Balance   string                `json:"balance"`
+	Changes   []AccountRecordsModel `json:"changes" gorm:"-"`
+	CreateAt  int64                 `json:"create_at"`
+	UpdateAt  int64                 `json:"update_at"`
+	DeleteAt  int64                 `json:"delete_at"`
 }
 
 type AccountWalletHandler struct{}
@@ -133,4 +137,26 @@ func (h *AccountWalletHandler) UpdateBalance(db *gorm.DB, id uint64, data map[st
 	}
 
 	return nil
+}
+
+func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletModel) error {
+	AccountRecordsModel := []AccountRecordsModel{}
+	db = db.Table((&AccountRecordsHandler{}).TableName())
+	addresss := utils.Address2Format(model.Address)
+	for k, v := range addresss {
+		if k == 0 {
+			db.Where("input like ?", fmt.Sprintf("%%%s%%", v))
+			continue
+		}
+		db.Or("input like ?", fmt.Sprintf("%%%s%%", v))
+	}
+	if len(addresss) == 0 {
+		return nil
+	}
+
+	err := db.Find(&AccountRecordsModel).Error
+	if err == nil {
+		model.Changes = AccountRecordsModel
+	}
+	return err
 }

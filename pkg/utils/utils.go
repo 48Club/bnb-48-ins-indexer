@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bnb-48-ins-indexer/pkg/helper"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -81,4 +82,17 @@ func IsValidERCAddress(address interface{}) bool {
 	default:
 		return false
 	}
+}
+
+func Address2Format(address string) []string {
+	res := []string{}
+
+	for _, v := range []string{
+		strings.ToLower(address),
+		strings.ToUpper(address),
+		common.HexToAddress(address).Hex(),
+	} {
+		res = append(res, hex.EncodeToString([]byte(v)))
+	}
+	return res
 }
