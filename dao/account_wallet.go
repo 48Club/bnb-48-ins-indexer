@@ -140,7 +140,7 @@ func (h *AccountWalletHandler) UpdateBalance(db *gorm.DB, id uint64, data map[st
 }
 
 func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletModel) error {
-	AccountRecordsModel := []AccountRecordsModel{}
+	accountRecordsModel := []AccountRecordsModel{}
 	db = db.Table((&AccountRecordsHandler{}).TableName())
 	addresss := utils.Address2Format(model.Address)
 	for k, v := range addresss {
@@ -154,12 +154,12 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 		return nil
 	}
 
-	err := db.Limit(20).Order("block desc, tx_index desc, op_index desc").Find(&AccountRecordsModel).Error
-	for _, v := range AccountRecordsModel {
-		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
+	err := db.Limit(20).Order("block desc, tx_index desc, op_index desc").Find(&accountRecordsModel).Error
+	for k, v := range accountRecordsModel {
+		accountRecordsModel[k].InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
 	}
 	if err == nil {
-		model.Changes = AccountRecordsModel
+		model.Changes = accountRecordsModel
 	}
 	return err
 }
