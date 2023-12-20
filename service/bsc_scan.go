@@ -107,7 +107,7 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 
 		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
 		for addr, records := range _tmpTxsByAddr {
-			for tk_hash, v := range records {
+			for _, v := range records {
 				_tmpRecords := v
 				for _, v := range _tmpRecords {
 					if s.pendingTxs.TxsInBlock.Contains(v.Block) {
@@ -116,9 +116,9 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 					if beginBH.Number.Uint64()-v.Block >= 15 {
 						// delete record in s.pendingTxs
 						s.pendingTxs.TxsHash.Remove(v.TxHash)
-						delete(_tmpTxsByAddr[addr][tk_hash], v.TxHash)
+						delete(_tmpTxsByAddr[addr][v.TxHash], v.TxHash)
 						delete(s.pendingTxs.Txs, v.TxHash)
-						delete(s.pendingTxs.TxsByTickHash[tk_hash], v.TxHash)
+						delete(s.pendingTxs.TxsByTickHash[v.TickHash], v.TxHash)
 					}
 
 				}
@@ -561,13 +561,16 @@ func (s *BscScanService) transferFrom() error {
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
-	if s.pendingTxs.TxsInBlock.Contains(block.NumberU64()) {
+	if s.pendingTxs.TxsHash.Contains(record.TxHash) {
 		return
 	}
 	record.IsPending = true
 	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input)
 
-	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
+	if !s.pendingTxs.TxsInBlock.Contains(block.NumberU64()) {
+		s.pendingTxs.TxsInBlock.Add(block.NumberU64())
+	}
+
 	s.pendingTxs.Txs[record.TxHash] = record
 	s.pendingTxs.TxsHash.Add(record.TxHash)
 
