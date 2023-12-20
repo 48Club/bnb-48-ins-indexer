@@ -183,8 +183,9 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		return nil
 	}
 
-	if insc.Decimals > 18 {
-		log.Sugar.Debugf("tx: %s, error: %s, decimals: %d", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
+	decimals, err := utils.StringToBigint(insc.Decimals)
+	if err != nil || decimals.Uint64() < 1 || decimals.Uint64() > 18 {
+		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
 		return nil
 	}
 
@@ -225,7 +226,7 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		TxIndex:  uint64(index),
 		Block:    block.NumberU64(),
 		BlockAt:  block.Time(),
-		Decimals: insc.Decimals,
+		Decimals: uint8(decimals.Uint64()),
 		Max:      max.String(),
 		Lim:      lim.String(),
 		Miners:   strings.Join(insc.Miners, ","),
