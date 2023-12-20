@@ -9,7 +9,6 @@ import (
 	"bnb-48-ins-indexer/service"
 	"log"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 )
 
@@ -64,7 +63,7 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 	}
 
 	for _, v := range res.Wallet {
-		_txsByAddr, ok := c.pendingTxs.TxsByAddr[common.HexToAddress(v.Address)]
+		_txsByAddr, ok := c.pendingTxs.TxsByAddr[v.Address]
 		if !ok {
 			break
 		}
@@ -72,10 +71,9 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 		if !ok {
 			break
 		}
-		v.Changes = _txsByTickHash.ToSlice()
-		// if len(_tmpChanges) == 0 {
-
-		// }
+		for _, tx := range _txsByTickHash {
+			v.Changes = append(v.Changes, *tx)
+		}
 		if c.walletDao.LoadChanges(db, v, len(v.Changes)) != nil {
 			log.Println("LoadChanges err:", err)
 		}

@@ -31,8 +31,10 @@ func (c *RecordController) List(ctx *gin.Context) {
 
 	resList := []*dao.AccountRecordsModel{}
 	ramTx := []*dao.AccountRecordsModel{}
-	if _ramTx, ok := c.pendingTxs.TxsByTickHash[req.TickHash]; ok && _ramTx.Cardinality() > 0 {
-		ramTx = _ramTx.ToSlice()
+	if _ramTx, ok := c.pendingTxs.TxsByTickHash[req.TickHash]; ok && len(_ramTx) > 0 {
+		for _, tx := range _ramTx {
+			ramTx = append(ramTx, tx)
+		}
 	}
 	ramTxLen := int64(len(ramTx))
 	if ramTxLen > 0 {

@@ -3,7 +3,6 @@ package main
 import (
 	"bnb-48-ins-indexer/cmd/api"
 	"bnb-48-ins-indexer/cmd/index"
-	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/types"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -19,10 +18,11 @@ func main() {
 
 func init() {
 	PendingTxs = types.GlobalVariable{
-		Txs:           mapset.NewSet[*dao.AccountRecordsModel](),
+		Txs:           make(types.RecordsModelByTxHash),
+		TxsHash:       mapset.NewSet[string](),
 		TxsInBlock:    mapset.NewSet[uint64](),
-		TxsByTickHash: map[string]mapset.Set[*dao.AccountRecordsModel]{},
-		TxsByAddr:     map[common.Address]map[string]mapset.Set[dao.AccountRecordsModel]{},
+		TxsByTickHash: make(map[string]types.RecordsModelByTxHash),
+		TxsByAddr:     make(map[string]map[string]types.RecordsModelByTxHash),
 		BlockAt:       common.Big0,
 	}
 }

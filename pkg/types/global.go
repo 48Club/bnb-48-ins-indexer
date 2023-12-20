@@ -5,13 +5,15 @@ import (
 	"math/big"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type GlobalVariable struct {
-	Txs           mapset.Set[*dao.AccountRecordsModel]
-	TxsByTickHash map[string]mapset.Set[*dao.AccountRecordsModel]
+	Txs           RecordsModelByTxHash
+	TxsHash       mapset.Set[string]
+	TxsByTickHash map[string]RecordsModelByTxHash
 	TxsInBlock    mapset.Set[uint64]
-	TxsByAddr     map[common.Address]map[string]mapset.Set[dao.AccountRecordsModel]
+	TxsByAddr     map[string]map[string]RecordsModelByTxHash
 	BlockAt       *big.Int
 }
+
+type RecordsModelByTxHash map[string]*dao.AccountRecordsModel

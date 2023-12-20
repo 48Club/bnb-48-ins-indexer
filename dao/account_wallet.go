@@ -140,6 +140,9 @@ func (h *AccountWalletHandler) UpdateBalance(db *gorm.DB, id uint64, data map[st
 }
 
 func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletModel, relimit int) error {
+	if relimit >= 20 {
+		return nil
+	}
 	accountRecordsModel := []AccountRecordsModel{}
 	db = db.Table((&AccountRecordsHandler{}).TableName())
 	addresss := utils.Address2Format(model.Address)

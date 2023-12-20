@@ -17,7 +17,6 @@ import (
 
 	types2 "bnb-48-ins-indexer/pkg/types"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -109,20 +108,16 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
 		for addr, records := range _tmpTxsByAddr {
 			for tk_hash, v := range records {
-				if v.Cardinality() == 0 {
-					continue
-				}
-				_tmpRecords := v.ToSlice()
+				_tmpRecords := v
 				for _, v := range _tmpRecords {
 					if s.pendingTxs.TxsInBlock.Contains(v.Block) {
 						continue
 					}
 					if beginBH.Number.Uint64()-v.Block >= 15 {
 						// delete record in s.pendingTxs
-						_tmpTxsByAddr[addr][tk_hash].Remove(v)
-						s.pendingTxs.Txs.Remove(&v)
-						s.pendingTxs.TxsByTickHash[tk_hash].Remove(&v)
-
+						delete(s.pendingTxs.Txs, v.TxHash)
+						s.pendingTxs.TxsHash.Remove(v.TxHash)
+						delete(_tmpTxsByAddr[addr][tk_hash], v.TxHash)
 					}
 
 				}
@@ -564,6 +559,16 @@ func (s *BscScanService) transferFrom() error {
 	return nil
 }
 
+/*
+	type GlobalVariable struct {
+		Txs           RecordsModelByTxHash
+		TxsHash       mapset.Set[string]
+		TxsByTickHash map[string]RecordsModelByTxHash
+		TxsInBlock    mapset.Set[uint64]
+		TxsByAddr     map[string]map[string][]dao.AccountRecordsModel
+		BlockAt       *big.Int
+	}
+*/
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
 	if s.pendingTxs.TxsInBlock.Contains(block.NumberU64()) {
 		return
@@ -571,29 +576,22 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 	record.IsPending = true
 	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input)
 
-	s.pendingTxs.Txs.Add(record)
-
-	fAddr := common.HexToAddress(record.From)
-	if _, ok := s.pendingTxs.TxsByAddr[fAddr]; !ok {
-		s.pendingTxs.TxsByAddr[fAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{
-			record.TickHash: mapset.NewSet[dao.AccountRecordsModel](),
-		}
-	}
-	s.pendingTxs.TxsByAddr[fAddr][record.TickHash].Add(*record)
-
-	tAddr := common.HexToAddress(record.To)
-	if _, ok := s.pendingTxs.TxsByAddr[tAddr]; !ok {
-		s.pendingTxs.TxsByAddr[tAddr] = map[string]mapset.Set[dao.AccountRecordsModel]{
-			record.TickHash: mapset.NewSet[dao.AccountRecordsModel](),
-		}
-	}
-	s.pendingTxs.TxsByAddr[tAddr][record.TickHash].Add(*record)
-
 	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
+	s.pendingTxs.Txs[record.TxHash] = record
+	s.pendingTxs.TxsHash.Add(record.TxHash)
+
+	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
+		s.pendingTxs.TxsByAddr[record.To] = make(map[string]types2.RecordsModelByTxHash)
+	}
+	s.pendingTxs.TxsByAddr[record.From][record.TickHash][record.TxHash] = record
+	if _, ok := s.pendingTxs.TxsByAddr[record.To]; !ok {
+		s.pendingTxs.TxsByAddr[record.To] = make(map[string]types2.RecordsModelByTxHash)
+	}
+	s.pendingTxs.TxsByAddr[record.To][record.TickHash][record.TxHash] = record
 
 	if _, ok := s.pendingTxs.TxsByTickHash[record.TickHash]; !ok {
-		s.pendingTxs.TxsByTickHash[record.TickHash] = mapset.NewSet[*dao.AccountRecordsModel]()
+		s.pendingTxs.TxsByTickHash[record.TickHash] = make(map[string]*dao.AccountRecordsModel)
 	}
-	s.pendingTxs.TxsByTickHash[record.TickHash].Add(record)
+	s.pendingTxs.TxsByTickHash[record.TickHash][record.TxHash] = record
 
 }
