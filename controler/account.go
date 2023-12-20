@@ -2,20 +2,24 @@ package controler
 
 import (
 	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/database"
 	bnb48types "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
 	"bnb-48-ins-indexer/service"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AccountController struct {
-	accountS *service.AccountService
+	accountS  *service.AccountService
+	walletDao dao.IAccountWallet
 }
 
 func NewAccountController() *AccountController {
 	return &AccountController{
-		accountS: service.NewAccountService(),
+		accountS:  service.NewAccountService(),
+		walletDao: &dao.AccountWalletHandler{},
 	}
 }
 
@@ -36,6 +40,8 @@ func (c *AccountController) List(ctx *gin.Context) {
 }
 
 func (c *AccountController) Balance(ctx *gin.Context) {
+	db := database.Mysql()
+
 	var req bnb48types.AccountBalanceReq
 	if err := ctx.ShouldBind(&req); err != nil {
 		utils.FailResponse(ctx, err.Error())
@@ -51,6 +57,12 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 	if c.checkBalance(req, res) != nil {
 		utils.FailResponse(ctx, err.Error())
 		return
+	}
+
+	for _, v := range res.Wallet {
+		if c.walletDao.LoadChanges(db, v) != nil {
+			log.Println("LoadChanges err:", err)
+		}
 	}
 
 	utils.SuccessResponse(ctx, res)
