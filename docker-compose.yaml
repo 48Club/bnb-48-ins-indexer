@@ -1,18 +1,21 @@
 version: "3"
 
 services:
-  index:
+  48club-ins:
     build:
       context: .
-      dockerfile: ./docker/index/Dockerfile
+      dockerfile: ./Dockerfile
     restart: always
+    ports:
+      - 0.0.0.0:8547:8888/tcp
     volumes:
-      - ./config:/www/index/config
-      - ./logs:/www/logs
+      - ./config:/48club/config
+      - /opt/data/bnb48_index/logs:/48club/logs
       - /root/.ethereum/:/opt/.ethereum/
     depends_on:
       - mysql
     environment:
+      - TZ=${TZ}
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
     logging:
       &logging
@@ -20,24 +23,6 @@ services:
       options:
         max-file: "3"
         max-size: 10m
-
-  api:
-    build:
-      context: .
-      dockerfile: ./docker/api/Dockerfile
-    restart: always
-    ports:
-      - 0.0.0.0:8547:8888/tcp
-    volumes:
-      - ./config:/www/api/config
-      - ./logs:/www/logs
-      - /root/.ethereum/:/opt/.ethereum/
-    environment:
-      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
-    depends_on:
-      - mysql
-    logging:
-      <<: *logging
 
   mysql:
     image: "mysql:8.0.29"

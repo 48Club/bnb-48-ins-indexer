@@ -3,25 +3,26 @@ package main
 import (
 	"bnb-48-ins-indexer/cmd/api"
 	"bnb-48-ins-indexer/cmd/index"
-	"os"
+	"bnb-48-ins-indexer/pkg/types"
 
-	"github.com/spf13/cobra"
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/ethereum/go-ethereum/common"
 )
 
-func newCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "bnb48",
-		Short: "bnb48",
-	}
-
-	cmd.AddCommand(index.NewCommand())
-	cmd.AddCommand(api.NewCommand())
-	return cmd
-}
+var PendingTxs types.GlobalVariable
 
 func main() {
-	cmd := newCommand()
-	if err := cmd.Execute(); err != nil {
-		os.Exit(-1)
+	api.Start(&PendingTxs)
+	index.Start(&PendingTxs)
+}
+
+func init() {
+	PendingTxs = types.GlobalVariable{
+		Txs:           make(types.RecordsModelByTxHash),
+		TxsHash:       mapset.NewSet[string](),
+		TxsInBlock:    mapset.NewSet[uint64](),
+		TxsByTickHash: make(map[string]types.RecordsModelByTxHash),
+		TxsByAddr:     make(map[string]map[string]types.RecordsModelByTxHash),
+		BlockAt:       common.Big0,
 	}
 }
