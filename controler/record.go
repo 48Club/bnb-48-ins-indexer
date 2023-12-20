@@ -37,9 +37,9 @@ func (c *RecordController) List(ctx *gin.Context) {
 	ramTxLen := int64(len(ramTx))
 	if ramTxLen > 0 {
 		if ramTxLen >= int64(req.PageSize)*(req.Page+1) {
-			resList = ramTx[ramTxLen-int64(req.PageSize)*(req.Page) : ramTxLen-int64(req.PageSize)*(req.Page+1)]
+			resList = ramTx[int64(req.PageSize)*(req.Page) : int64(req.PageSize)*(req.Page+1)]
 		} else if ramTxLen > int64(req.PageSize)*req.Page {
-			resList = ramTx[ramTxLen-int64(req.PageSize)*req.Page:]
+			resList = ramTx[int64(req.PageSize)*req.Page:]
 		}
 	}
 	res, err := c.recordS.List(req)
