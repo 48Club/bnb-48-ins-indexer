@@ -115,9 +115,10 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 					}
 					if beginBH.Number.Uint64()-v.Block >= 15 {
 						// delete record in s.pendingTxs
-						delete(s.pendingTxs.Txs, v.TxHash)
 						s.pendingTxs.TxsHash.Remove(v.TxHash)
 						delete(_tmpTxsByAddr[addr][tk_hash], v.TxHash)
+						delete(s.pendingTxs.Txs, v.TxHash)
+						delete(s.pendingTxs.TxsByTickHash[tk_hash], v.TxHash)
 					}
 
 				}
@@ -559,16 +560,6 @@ func (s *BscScanService) transferFrom() error {
 	return nil
 }
 
-/*
-	type GlobalVariable struct {
-		Txs           RecordsModelByTxHash
-		TxsHash       mapset.Set[string]
-		TxsByTickHash map[string]RecordsModelByTxHash
-		TxsInBlock    mapset.Set[uint64]
-		TxsByAddr     map[string]map[string][]dao.AccountRecordsModel
-		BlockAt       *big.Int
-	}
-*/
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
 	if s.pendingTxs.TxsInBlock.Contains(block.NumberU64()) {
 		return
