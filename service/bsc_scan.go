@@ -117,10 +117,14 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 					if s.pendingTxs.TxsInBlock.Contains(v.Block) {
 						continue
 					}
+					if beginBH.Number.Uint64()-v.Block >= 15 {
+						// delete record in s.pendingTxs
+						_tmpTxsByAddr[addr][tk_hash].Remove(v)
+						s.pendingTxs.Txs.Remove(&v)
+						s.pendingTxs.TxsByTickHash[tk_hash].Remove(&v)
 
-					_tmpTxsByAddr[addr][tk_hash].Remove(v)
-					s.pendingTxs.Txs.Remove(&v)
-					s.pendingTxs.TxsByTickHash[tk_hash].Remove(&v)
+					}
+
 				}
 			}
 
