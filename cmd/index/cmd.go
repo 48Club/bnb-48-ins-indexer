@@ -11,7 +11,7 @@ func Start(pendingTxs *[]dao.AccountRecordsModel) {
 	log.Init("index.log")
 	database.NewMysql()
 
-	bsc := service.NewBscScanService()
+	bsc := service.NewBscScanService(pendingTxs)
 
 	if err := bsc.Scan(); err != nil {
 		panic(err)

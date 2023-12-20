@@ -3,18 +3,19 @@ package router
 import (
 	"bnb-48-ins-indexer/config"
 	"bnb-48-ins-indexer/controler"
+	"bnb-48-ins-indexer/dao"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewBotRoute() *gin.Engine {
+func NewBotRoute(pendingTxs *[]dao.AccountRecordsModel) *gin.Engine {
 	r := gin.Default()
 	conf := config.GetConfig()
 	bnb48 := r.Group(conf.App.RoutePrefix)
 
 	var (
-		account     = controler.NewAccountController()
-		record      = controler.NewRecordController()
+		account     = controler.NewAccountController(pendingTxs)
+		record      = controler.NewRecordController(pendingTxs)
 		inscription = controler.NewInscriptionController()
 	)
 

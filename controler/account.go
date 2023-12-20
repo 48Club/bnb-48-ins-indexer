@@ -12,14 +12,16 @@ import (
 )
 
 type AccountController struct {
-	accountS  *service.AccountService
-	walletDao dao.IAccountWallet
+	accountS   *service.AccountService
+	walletDao  dao.IAccountWallet
+	pendingTxs *[]dao.AccountRecordsModel
 }
 
-func NewAccountController() *AccountController {
+func NewAccountController(pendingTxs *[]dao.AccountRecordsModel) *AccountController {
 	return &AccountController{
-		accountS:  service.NewAccountService(),
-		walletDao: &dao.AccountWalletHandler{},
+		accountS:   service.NewAccountService(),
+		walletDao:  &dao.AccountWalletHandler{},
+		pendingTxs: pendingTxs,
 	}
 }
 

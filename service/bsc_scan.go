@@ -29,6 +29,7 @@ type BscScanService struct {
 	inscriptionDao dao.IInscription
 	inscriptions   map[string]*inscription // tick-hash : inscription
 	conf           config.Config
+	pendingTxs     *[]dao.AccountRecordsModel
 }
 
 type inscription struct {
@@ -41,7 +42,7 @@ type inscription struct {
 	TickHash string
 }
 
-func NewBscScanService() *BscScanService {
+func NewBscScanService(pendingTxs *[]dao.AccountRecordsModel) *BscScanService {
 	return &BscScanService{
 		account:        &dao.AccountHandler{},
 		accountRecords: &dao.AccountRecordsHandler{},
@@ -49,6 +50,7 @@ func NewBscScanService() *BscScanService {
 		inscriptionDao: &dao.InscriptionHandler{},
 		inscriptions:   make(map[string]*inscription),
 		conf:           config.GetConfig(),
+		pendingTxs:     pendingTxs,
 	}
 }
 

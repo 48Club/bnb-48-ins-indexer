@@ -24,7 +24,7 @@ func Start(pendingTxs *[]dao.AccountRecordsModel) {
 	database.NewMysql()
 
 	gin.DefaultWriter = log.Write
-	r := router.NewBotRoute()
+	r := router.NewBotRoute(pendingTxs)
 	httpSrv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", app.Port),
 		Handler: r,
