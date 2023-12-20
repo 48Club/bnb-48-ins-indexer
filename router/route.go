@@ -3,12 +3,12 @@ package router
 import (
 	"bnb-48-ins-indexer/config"
 	"bnb-48-ins-indexer/controler"
-	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/types"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewBotRoute(pendingTxs *[]dao.AccountRecordsModel) *gin.Engine {
+func NewBotRoute(pendingTxs *types.GlobalVariable) *gin.Engine {
 	r := gin.Default()
 	conf := config.GetConfig()
 	bnb48 := r.Group(conf.App.RoutePrefix)

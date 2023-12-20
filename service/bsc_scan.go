@@ -15,10 +15,13 @@ import (
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/utils"
 
+	types2 "bnb-48-ins-indexer/pkg/types"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"gorm.io/gorm"
 )
 
@@ -29,7 +32,7 @@ type BscScanService struct {
 	inscriptionDao dao.IInscription
 	inscriptions   map[string]*inscription // tick-hash : inscription
 	conf           config.Config
-	pendingTxs     *[]dao.AccountRecordsModel
+	pendingTxs     *types2.GlobalVariable
 }
 
 type inscription struct {
@@ -42,7 +45,7 @@ type inscription struct {
 	TickHash string
 }
 
-func NewBscScanService(pendingTxs *[]dao.AccountRecordsModel) *BscScanService {
+func NewBscScanService(pendingTxs *types2.GlobalVariable) *BscScanService {
 	return &BscScanService{
 		account:        &dao.AccountHandler{},
 		accountRecords: &dao.AccountRecordsHandler{},

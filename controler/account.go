@@ -3,6 +3,7 @@ package controler
 import (
 	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
+	"bnb-48-ins-indexer/pkg/types"
 	bnb48types "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
 	"bnb-48-ins-indexer/service"
@@ -14,10 +15,10 @@ import (
 type AccountController struct {
 	accountS   *service.AccountService
 	walletDao  dao.IAccountWallet
-	pendingTxs *[]dao.AccountRecordsModel
+	pendingTxs *types.GlobalVariable
 }
 
-func NewAccountController(pendingTxs *[]dao.AccountRecordsModel) *AccountController {
+func NewAccountController(pendingTxs *types.GlobalVariable) *AccountController {
 	return &AccountController{
 		accountS:   service.NewAccountService(),
 		walletDao:  &dao.AccountWalletHandler{},

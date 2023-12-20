@@ -1,7 +1,7 @@
 package controler
 
 import (
-	"bnb-48-ins-indexer/dao"
+	"bnb-48-ins-indexer/pkg/types"
 	bnb48types "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
 	"bnb-48-ins-indexer/service"
@@ -11,10 +11,10 @@ import (
 
 type RecordController struct {
 	recordS    *service.RecordService
-	pendingTxs *[]dao.AccountRecordsModel
+	pendingTxs *types.GlobalVariable
 }
 
-func NewRecordController(pendingTxs *[]dao.AccountRecordsModel) *RecordController {
+func NewRecordController(pendingTxs *types.GlobalVariable) *RecordController {
 	return &RecordController{
 		recordS:    service.NewRecordService(),
 		pendingTxs: pendingTxs,
