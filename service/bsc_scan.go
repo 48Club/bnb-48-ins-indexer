@@ -176,7 +176,7 @@ func (s *BscScanService) Scan() error {
 			continue
 		}
 
-		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), new(big.Int).SetUint64(block))
+		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), targetBN)
 
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
