@@ -17,6 +17,7 @@ import (
 
 	types2 "bnb-48-ins-indexer/pkg/types"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -37,7 +38,7 @@ type BscScanService struct {
 
 type inscription struct {
 	Id       uint64
-	Miners   map[string]struct{}
+	Miners   mapset.Set[string]
 	Max      *big.Int
 	Lim      *big.Int
 	Minted   *big.Int
@@ -66,7 +67,7 @@ func (s *BscScanService) init() error {
 	for _, ele := range inscs {
 		var (
 			insc   inscription
-			miners = make(map[string]struct{})
+			miners = mapset.NewSet[string]()
 		)
 		insc.Id = ele.Id
 		insc.Tick = ele.Tick
@@ -82,8 +83,9 @@ func (s *BscScanService) init() error {
 		}
 
 		for _, ele := range strings.Split(ele.Miners, ",") {
-			miners[ele] = struct{}{}
+			miners.Add(ele)
 		}
+		insc.Miners = miners
 
 		s.inscriptions[ele.TickHash] = &insc
 	}
@@ -95,14 +97,12 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 
 	{
 		// 删除已经确认的交易
-		_tmpTxsInBlock := s.pendingTxs.TxsInBlock
-		if _tmpTxsInBlock.Cardinality() > 0 {
+		if s.pendingTxs.TxsInBlock.Cardinality() > 0 {
 			for _, bn := range s.pendingTxs.TxsInBlock.ToSlice() {
 				if beginBH.Number.Uint64()-bn >= 15 {
-					_tmpTxsInBlock.Remove(bn)
+					s.pendingTxs.TxsInBlock.Remove(bn)
 				}
 			}
-			s.pendingTxs.TxsInBlock = _tmpTxsInBlock
 		}
 
 		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
@@ -116,7 +116,7 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 					if beginBH.Number.Uint64()-v.Block >= 15 {
 						// delete record in s.pendingTxs
 						s.pendingTxs.TxsHash.Remove(v.TxHash)
-						delete(_tmpTxsByAddr[addr][v.TxHash], v.TxHash)
+						delete(_tmpTxsByAddr[addr][v.TickHash], v.TxHash)
 						delete(s.pendingTxs.Txs, v.TxHash)
 						delete(s.pendingTxs.TxsByTickHash[v.TickHash], v.TxHash)
 					}
@@ -168,7 +168,7 @@ func (s *BscScanService) Scan() error {
 
 		targetBN := new(big.Int).SetUint64(block)
 		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
-		if err == nil {
+		if err == nil && time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
 			go s.checkPendingTxs(targetBlockHeader)
 		}
 		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
@@ -296,7 +296,7 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		}
 	}
 
-	hash := strings.ToLower(tx.Hash().Hex())
+	hash := tx.Hash().Hex()
 	// add inscription
 	inscriptionModel := &dao.InscriptionModel{
 		Tick:     insc.Tick,
@@ -320,9 +320,9 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		return err
 	}
 
-	miners := make(map[string]struct{})
+	miners := mapset.NewSet[string]()
 	for _, miner := range insc.Miners {
-		miners[miner] = struct{}{}
+		miners.Add(miner)
 	}
 	s.inscriptions[hash] = &inscription{
 		Id:       inscriptionModel.Id,
@@ -370,8 +370,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		return nil
 	}
 	// miners
-	_, ok = insc.Miners[strings.ToLower(block.Coinbase().Hex())]
-	if len(insc.Miners) > 0 && !ok {
+	if insc.Miners.Cardinality() > 0 && !insc.Miners.Contains(strings.ToLower(block.Coinbase().Hex())) {
 		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
 		return nil
 	}
@@ -658,19 +657,21 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 
 	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
 		s.pendingTxs.TxsByAddr[record.From] = map[string]types2.RecordsModelByTxHash{
-			record.TickHash: {},
+			record.TxHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.From][record.TickHash][record.TxHash] = record
 	if _, ok := s.pendingTxs.TxsByAddr[record.To]; !ok {
 		s.pendingTxs.TxsByAddr[record.To] = map[string]types2.RecordsModelByTxHash{
-			record.TickHash: {},
+			record.TxHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.To][record.TickHash][record.TxHash] = record
 
 	if _, ok := s.pendingTxs.TxsByTickHash[record.TickHash]; !ok {
-		s.pendingTxs.TxsByTickHash[record.TickHash] = make(map[string]*dao.AccountRecordsModel)
+		s.pendingTxs.TxsByTickHash[record.TickHash] = types2.RecordsModelByTxHash{
+			record.TxHash: {},
+		}
 	}
 	s.pendingTxs.TxsByTickHash[record.TickHash][record.TxHash] = record
 
