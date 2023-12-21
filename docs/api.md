@@ -26,8 +26,8 @@ response(json) (sorted by balance desc)
         "page_size": int
         "list": [
             {
-                "id": int,
-                "account_id": int,
+                "id": string,
+                "account_id": string,
                 "address": string,
                 "tick": string
                 "tick_hash": string
@@ -79,7 +79,7 @@ response(json) (sorted by block_at desc, tx_index desc)
         "page_size": int
         "list": [
             {
-                "id": int,
+                "id": string,
                 "block": int,
                 "block_at": int,
                 "is_pending": bool,
@@ -148,7 +148,7 @@ response(json)
         "page_size": int
         "list": [
             {
-                "id": int,
+                "id": string,
                 "tick": string,
                 "tick_hash": string,
                 "tx_index": int,
@@ -202,8 +202,8 @@ response(json)
     "data": {
         "wallet": [
             {
-                "id": int,
-                "account_id": int,
+                "id": string,
+                "account_id": string,
                 "address": string,
                 "tick": string,
                 "tick_hash": string,
@@ -253,4 +253,63 @@ example:
 curl --location 'http://hostname:port/bnb48_index/v1/account/balance' \
 --header 'Content-Type: application/json' \
 --data '{"tick_hash":"aaaa", "address":"xxx"}'
+```
+
+## /bnb48_index/v1/record
+method POST
+
+request body(json)
+
+```
+{
+"tx_hash" string
+}
+```
+
+response(json) (sorted by op_index desc)
+
+```
+{
+    "code": 0,
+    "msg": "ok",
+    "data": {
+        "list": [
+            {
+                "id": string,
+                "block": int,
+                "block_at": int,
+                "tx_hash": string,
+                "tx_index": int,
+                "op_index": int,
+                "from": string,
+                "to": string,
+                "input": string,
+                "input_decode": {
+                    "amt": string,
+                    "decimals", int,
+                    "lim": string,
+                    "max": string,
+                    "miners": string | null,
+                    "op": string,
+                    "p": string,
+                    "tick": string,
+                    "tick_hash": string,
+                    "to": string,
+                },
+                "type": int, // 1：mint 2: transfer
+                "create_at": int,
+                "update_at": int,
+                "delete_at": int
+            }
+        ]
+    }
+}
+```
+
+example:
+
+```
+curl --location 'http://hostname:port/bnb48_index/v1/record' \
+--header 'Content-Type: application/json' \
+--data '{"tx_hash":"0x5becb0c3599448df8fe5c9cb4820f971858aa2d4254c6a19bf4a64be468e93e0"}'
 ```
