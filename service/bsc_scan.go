@@ -179,7 +179,7 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 
 func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *helper.BNB48Inscription, index int) error {
 	if insc.Tick == "" {
-		log.Sugar.Debugf("tx: %s, error: %s, decimals: %d", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
+		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
 		return nil
 	}
 
