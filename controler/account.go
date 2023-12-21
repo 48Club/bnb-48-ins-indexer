@@ -74,6 +74,10 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 		for _, tx := range _txsByTickHash {
 			v.Changes = append(v.Changes, *tx)
 		}
+
+	}
+
+	for _, v := range res.Wallet {
 		if c.walletDao.LoadChanges(db, v, len(v.Changes)) != nil {
 			log.Println("LoadChanges err:", err)
 		}
