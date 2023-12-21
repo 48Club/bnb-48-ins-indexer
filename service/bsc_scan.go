@@ -1,12 +1,6 @@
 package service
 
 import (
-	"context"
-	"errors"
-	"math/big"
-	"strings"
-	"time"
-
 	"bnb-48-ins-indexer/config"
 	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
@@ -14,6 +8,11 @@ import (
 	"bnb-48-ins-indexer/pkg/helper"
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/utils"
+	"context"
+	"errors"
+	"math/big"
+	"strings"
+	"time"
 
 	types2 "bnb-48-ins-indexer/pkg/types"
 
@@ -95,10 +94,8 @@ func (s *BscScanService) init() error {
 
 func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 
-	s.pendingTxs.Lock()
-	defer s.pendingTxs.Unlock()
-
 	{
+		s.pendingTxs.Lock()
 		// 删除已经确认的交易
 		for _, txHash := range s.pendingTxs.TxsHash.ToSlice() {
 			if tx, ok := s.pendingTxs.Txs[txHash]; ok && beginBH.Number.Uint64() >= tx.Block {
@@ -119,8 +116,8 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 				}
 				s.pendingTxs.TxsInBlock.Remove(tx.Block)
 			}
-
 		}
+		s.pendingTxs.Unlock()
 	}
 	{
 		// 添加新的交易
@@ -637,7 +634,6 @@ func (s *BscScanService) transferFrom() error {
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
-
 	s.pendingTxs.Lock()
 	defer s.pendingTxs.Unlock()
 
@@ -647,12 +643,10 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 	record.IsPending = true
 	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input)
 
-	if !s.pendingTxs.TxsInBlock.Contains(block.NumberU64()) {
-		s.pendingTxs.TxsInBlock.Add(block.NumberU64())
-	}
+	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
+	s.pendingTxs.TxsHash.Add(record.TxHash)
 
 	s.pendingTxs.Txs[record.TxHash] = record
-	s.pendingTxs.TxsHash.Add(record.TxHash)
 
 	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
 		s.pendingTxs.TxsByAddr[record.From] = map[string]types2.RecordsModelByTxHash{
