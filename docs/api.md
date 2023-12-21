@@ -84,6 +84,7 @@ response(json) (sorted by block_at desc, tx_index desc)
                 "block_at": int,
                 "is_pending": bool,
                 "tx_hash": string,
+                "op_index": int,
                 "tx_index": int,
                 "from": string,
                 "to": string,

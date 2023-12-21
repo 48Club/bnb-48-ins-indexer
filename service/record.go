@@ -62,3 +62,18 @@ func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListReco
 	}
 	return resp, nil
 }
+
+func (s *RecordService) Get(req bnb48types.GetRecordReq) (*bnb48types.GetRecordRsp, error) {
+	lists, err := s.recordDao.FindByTxHash(database.Mysql(), req.TxHash)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ele := range lists {
+		ele.InputDecode, _ = utils.InputToBNB48Inscription(ele.Input)
+	}
+
+	return &bnb48types.GetRecordRsp{
+		List: lists,
+	}, nil
+}

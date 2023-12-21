@@ -12,6 +12,7 @@ type IAccountRecords interface {
 	TableName() string
 	Create(db *gorm.DB, model *AccountRecordsModel) error
 	Find(db *gorm.DB) ([]*AccountRecordsModel, error)
+	FindByTxHash(db *gorm.DB, txHash string) ([]*AccountRecordsModel, error)
 	Count(db *gorm.DB) (int64, error)
 }
 
@@ -84,4 +85,19 @@ func (h *AccountRecordsHandler) Count(db *gorm.DB) (int64, error) {
 	}
 
 	return res, nil
+}
+
+func (h *AccountRecordsHandler) FindByTxHash(db *gorm.DB, txHash string) ([]*AccountRecordsModel, error) {
+	var (
+		datas []*AccountRecordsModel
+		err   error
+	)
+
+	db = db.Where("delete_at = 0")
+
+	if err = db.Table(h.TableName()).Where("tx_hash = ?", txHash).Order("op_index desc").Find(&datas).Error; err != nil {
+		return nil, err
+	}
+
+	return datas, nil
 }
