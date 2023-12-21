@@ -95,37 +95,32 @@ func (s *BscScanService) init() error {
 
 func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 
+	s.pendingTxs.Lock()
+	defer s.pendingTxs.Unlock()
+
 	{
 		// 删除已经确认的交易
-		if s.pendingTxs.TxsInBlock.Cardinality() > 0 {
-			for _, bn := range s.pendingTxs.TxsInBlock.ToSlice() {
-				if beginBH.Number.Uint64()-bn >= 15 {
-					s.pendingTxs.TxsInBlock.Remove(bn)
-				}
-			}
-		}
-
-		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
-		for addr, records := range _tmpTxsByAddr {
-			for _, v := range records {
-				_tmpRecords := v
-				for _, v := range _tmpRecords {
-					if s.pendingTxs.TxsInBlock.Contains(v.Block) {
-						continue
+		for _, txHash := range s.pendingTxs.TxsHash.ToSlice() {
+			if tx, ok := s.pendingTxs.Txs[txHash]; ok && beginBH.Number.Uint64() >= tx.Block {
+				s.pendingTxs.TxsHash.Remove(txHash)
+				delete(s.pendingTxs.Txs, txHash)
+				if _, ok := s.pendingTxs.TxsByAddr[tx.From]; ok {
+					if _, ok := s.pendingTxs.TxsByAddr[tx.From][tx.TickHash]; ok {
+						delete(s.pendingTxs.TxsByAddr[tx.From][tx.TickHash], txHash)
 					}
-					if beginBH.Number.Uint64()-v.Block >= 15 {
-						// delete record in s.pendingTxs
-						s.pendingTxs.TxsHash.Remove(v.TxHash)
-						delete(_tmpTxsByAddr[addr][v.TickHash], v.TxHash)
-						delete(s.pendingTxs.Txs, v.TxHash)
-						delete(s.pendingTxs.TxsByTickHash[v.TickHash], v.TxHash)
-					}
-
 				}
+				if _, ok := s.pendingTxs.TxsByAddr[tx.To]; ok {
+					if _, ok := s.pendingTxs.TxsByAddr[tx.To][tx.TickHash]; ok {
+						delete(s.pendingTxs.TxsByAddr[tx.To][tx.TickHash], txHash)
+					}
+				}
+				if _, ok := s.pendingTxs.TxsByTickHash[tx.TickHash]; ok {
+					delete(s.pendingTxs.TxsByTickHash[tx.TickHash], txHash)
+				}
+				s.pendingTxs.TxsInBlock.Remove(tx.Block)
 			}
 
 		}
-		s.pendingTxs.TxsByAddr = _tmpTxsByAddr
 	}
 	{
 		// 添加新的交易
@@ -642,6 +637,10 @@ func (s *BscScanService) transferFrom() error {
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
+
+	s.pendingTxs.Lock()
+	defer s.pendingTxs.Unlock()
+
 	if s.pendingTxs.TxsHash.Contains(record.TxHash) {
 		return
 	}
@@ -657,13 +656,13 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 
 	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
 		s.pendingTxs.TxsByAddr[record.From] = map[string]types2.RecordsModelByTxHash{
-			record.TxHash: {},
+			record.TickHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.From][record.TickHash][record.TxHash] = record
 	if _, ok := s.pendingTxs.TxsByAddr[record.To]; !ok {
 		s.pendingTxs.TxsByAddr[record.To] = map[string]types2.RecordsModelByTxHash{
-			record.TxHash: {},
+			record.TickHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.To][record.TickHash][record.TxHash] = record
