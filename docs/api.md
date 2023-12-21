@@ -61,6 +61,7 @@ request body(json)
 
 ```
 {
+"tick_hash" string
 "page" int
 "page_size" int (required, 1~256)
 }
