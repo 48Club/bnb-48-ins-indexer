@@ -61,7 +61,6 @@ request body(json)
 
 ```
 {
-"tick_hash" string
 "page" int
 "page_size" int (required, 1~256)
 }
@@ -84,6 +83,7 @@ response(json) (sorted by block_at desc, tx_index desc)
                 "block_at": int,
                 "is_pending": bool,
                 "tx_hash": string,
+                "op_index": int,
                 "tx_index": int,
                 "from": string,
                 "to": string,
