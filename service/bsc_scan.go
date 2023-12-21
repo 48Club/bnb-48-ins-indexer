@@ -657,13 +657,13 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 
 	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
 		s.pendingTxs.TxsByAddr[record.From] = map[string]types2.RecordsModelByTxHash{
-			record.TxHash: {},
+			record.TickHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.From][record.TickHash][record.TxHash] = record
 	if _, ok := s.pendingTxs.TxsByAddr[record.To]; !ok {
 		s.pendingTxs.TxsByAddr[record.To] = map[string]types2.RecordsModelByTxHash{
-			record.TxHash: {},
+			record.TickHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.To][record.TickHash][record.TxHash] = record
