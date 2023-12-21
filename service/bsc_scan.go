@@ -340,7 +340,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	updates := map[string]interface{}{
-		"balance": new(big.Int).Add(balance, big.NewInt(1)).String(),
+		"balance": new(big.Int).Add(balance, amt).String(),
 	}
 	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
 		return err
