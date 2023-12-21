@@ -82,7 +82,7 @@ response(json) (sorted by block_at desc, tx_index desc)
                 "id": string,
                 "block": int,
                 "block_at": int,
-                "is_pending": bool,
+                "is_pending": bool,(true:pending, time.Now() - block_at < 45; false: comfirmed)
                 "tx_hash": string,
                 "op_index": int,
                 "tx_index": int,
@@ -214,7 +214,7 @@ response(json)
                         "id": int,
                         "block": int,
                         "block_at": int,
-                        "is_pending": bool,
+                        "is_pending": bool,(true:pending, time.Now() - block_at < 45; false: comfirmed)
                         "tx_hash": string,
                         "tx_index": int,
                         "from": string,
