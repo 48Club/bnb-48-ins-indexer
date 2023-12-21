@@ -266,7 +266,7 @@ request body(json)
 }
 ```
 
-response(json) (sorted by block_at desc, tx_index desc)
+response(json) (sorted by op_index desc)
 
 ```
 {
