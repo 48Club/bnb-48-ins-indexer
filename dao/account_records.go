@@ -95,7 +95,7 @@ func (h *AccountRecordsHandler) FindByTxHash(db *gorm.DB, txHash string) ([]*Acc
 
 	db = db.Where("delete_at = 0")
 
-	if err = db.Table(h.TableName()).Where("tx_hash", txHash).Order("op_index desc").Find(&datas).Error; err != nil {
+	if err = db.Table(h.TableName()).Where("tx_hash = ?", txHash).Order("op_index desc").Find(&datas).Error; err != nil {
 		return nil, err
 	}
 
