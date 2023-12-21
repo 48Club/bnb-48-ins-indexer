@@ -17,6 +17,7 @@ import (
 
 	types2 "bnb-48-ins-indexer/pkg/types"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -37,7 +38,7 @@ type BscScanService struct {
 
 type inscription struct {
 	Id       uint64
-	Miners   map[string]struct{}
+	Miners   mapset.Set[string]
 	Max      *big.Int
 	Lim      *big.Int
 	Minted   *big.Int
@@ -66,7 +67,7 @@ func (s *BscScanService) init() error {
 	for _, ele := range inscs {
 		var (
 			insc   inscription
-			miners = make(map[string]struct{})
+			miners = mapset.NewSet[string]()
 		)
 		insc.Id = ele.Id
 		insc.Tick = ele.Tick
@@ -82,8 +83,9 @@ func (s *BscScanService) init() error {
 		}
 
 		for _, ele := range strings.Split(ele.Miners, ",") {
-			miners[ele] = struct{}{}
+			miners.Add(ele)
 		}
+		insc.Miners = miners
 
 		s.inscriptions[ele.TickHash] = &insc
 	}
@@ -95,14 +97,12 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 
 	{
 		// 删除已经确认的交易
-		_tmpTxsInBlock := s.pendingTxs.TxsInBlock
-		if _tmpTxsInBlock.Cardinality() > 0 {
+		if s.pendingTxs.TxsInBlock.Cardinality() > 0 {
 			for _, bn := range s.pendingTxs.TxsInBlock.ToSlice() {
 				if beginBH.Number.Uint64()-bn >= 15 {
-					_tmpTxsInBlock.Remove(bn)
+					s.pendingTxs.TxsInBlock.Remove(bn)
 				}
 			}
-			s.pendingTxs.TxsInBlock = _tmpTxsInBlock
 		}
 
 		_tmpTxsByAddr := s.pendingTxs.TxsByAddr
@@ -116,7 +116,7 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 					if beginBH.Number.Uint64()-v.Block >= 15 {
 						// delete record in s.pendingTxs
 						s.pendingTxs.TxsHash.Remove(v.TxHash)
-						delete(_tmpTxsByAddr[addr][v.TxHash], v.TxHash)
+						delete(_tmpTxsByAddr[addr][v.TickHash], v.TxHash)
 						delete(s.pendingTxs.Txs, v.TxHash)
 						delete(s.pendingTxs.TxsByTickHash[v.TickHash], v.TxHash)
 					}
@@ -168,7 +168,7 @@ func (s *BscScanService) Scan() error {
 
 		targetBN := new(big.Int).SetUint64(block)
 		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
-		if err == nil {
+		if err == nil && time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
 			go s.checkPendingTxs(targetBlockHeader)
 		}
 		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
@@ -222,14 +222,23 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 		log.Sugar.Error(err)
 		return nil
 	}
+
 	if data == nil {
 		return nil
 	}
+
+	if data.P != "bnb-48" {
+		return nil
+	}
+
 	switch data.Op {
 	case "deploy":
+		if err = s.deploy(db, block, tx, data, index); err != nil {
+			return err
+		}
 	case "recap":
 	case "mint":
-		if err = s.mint(db, block, tx, data, index, isPending...); err != nil {
+		if err = s.mint(db, block, tx, data, index); err != nil {
 			return err
 		}
 	case "transfer":
@@ -246,7 +255,85 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 	return nil
 }
 
-func (s *BscScanService) deploy() error {
+func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *helper.BNB48Inscription, index int) error {
+	if insc.Tick == "" {
+		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
+		return nil
+	}
+
+	decimals, err := utils.StringToBigint(insc.Decimals)
+	if err != nil || decimals.Uint64() < 1 || decimals.Uint64() > 18 {
+		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
+		return nil
+	}
+
+	max, err := utils.StringToBigint(insc.Max)
+	if err != nil || max.Uint64() < 1 {
+		log.Sugar.Debugf("tx: %s, error: %s, max: %s", tx.Hash().Hex(), "max invalid", insc.Max)
+		return nil
+	}
+
+	lim, err := utils.StringToBigint(insc.Lim)
+	if err != nil || lim.Uint64() < 1 {
+		log.Sugar.Debugf("tx: %s, error: %s, lim: %s", tx.Hash().Hex(), "lim invalid", insc.Lim)
+		return nil
+	}
+
+	if max.Cmp(lim) < 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "max must gte lim", insc.Max, insc.Lim)
+		return nil
+	}
+
+	if new(big.Int).Rem(max, lim).Uint64() != 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "lim can not divisible by max", insc.Max, insc.Lim)
+		return nil
+	}
+
+	for _, miner := range insc.Miners {
+		if !utils.IsValidERCAddress(miner) {
+			log.Sugar.Debugf("tx: %s, error: %s, miner: %s", tx.Hash().Hex(), "invalid miner", miner)
+			return nil
+		}
+	}
+
+	hash := tx.Hash().Hex()
+	// add inscription
+	inscriptionModel := &dao.InscriptionModel{
+		Tick:     insc.Tick,
+		TickHash: hash,
+		TxIndex:  uint64(index),
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time(),
+		Decimals: uint8(decimals.Uint64()),
+		Max:      max.String(),
+		Lim:      lim.String(),
+		Miners:   strings.Join(insc.Miners, ","),
+		Minted:   "0",
+		Status:   1,
+		Protocol: insc.P,
+		DeployBy: strings.ToLower(utils.GetTxFrom(tx).Hex()),
+	}
+	if inscriptionModel.Id, err = dao.GenSnowflakeID(); err != nil {
+		return err
+	}
+	if err = s.inscriptionDao.Create(db, inscriptionModel); err != nil {
+		return err
+	}
+
+	miners := mapset.NewSet[string]()
+	for _, miner := range insc.Miners {
+		miners.Add(miner)
+	}
+	s.inscriptions[hash] = &inscription{
+		Id:       inscriptionModel.Id,
+		Max:      max,
+		Lim:      lim,
+		Minted:   big.NewInt(0),
+		Tick:     insc.Tick,
+		TickHash: hash,
+		Miners:   miners,
+	}
+
 	return nil
 }
 
@@ -254,7 +341,7 @@ func (s *BscScanService) recap() error {
 	return nil
 }
 
-func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) error {
+func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
 	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
@@ -283,36 +370,18 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		return nil
 	}
 	// miners
-	_, ok = insc.Miners[strings.ToLower(block.Coinbase().Hex())]
-	if len(insc.Miners) > 0 && !ok {
+	if insc.Miners.Cardinality() > 0 && !insc.Miners.Contains(strings.ToLower(block.Coinbase().Hex())) {
 		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
 		return nil
 	}
 
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	to := strings.ToLower(tx.To().Hex())
 	// account
-	account, err := s.account.SelectByAddress(db, from)
-	// add record
-
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		BlockAt:  block.Time(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		TickHash: insc.TickHash,
-		From:     from,
-		To:       strings.ToLower(tx.To().Hex()),
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     1, // mint
-	}
-
-	if len(isPending) > 0 && isPending[0] {
-		s.updateRam(record, block)
-	}
-
+	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			account = &dao.AccountModel{Address: from}
+			account = &dao.AccountModel{Address: to}
 			if account.Id, err = dao.GenSnowflakeID(); err != nil {
 				return err
 			}
@@ -348,7 +417,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	updates := map[string]interface{}{
-		"balance": new(big.Int).Add(balance, big.NewInt(1)).String(),
+		"balance": new(big.Int).Add(balance, amt).String(),
 	}
 	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
 		return err
@@ -363,6 +432,18 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		}
 	}
 
+	// add record
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: insc.TickHash,
+		From:     from,
+		To:       to,
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     1, // mint
+	}
 	if record.Id, err = dao.GenSnowflakeID(); err != nil {
 		return err
 	}
@@ -576,19 +657,21 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 
 	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
 		s.pendingTxs.TxsByAddr[record.From] = map[string]types2.RecordsModelByTxHash{
-			record.TickHash: {},
+			record.TxHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.From][record.TickHash][record.TxHash] = record
 	if _, ok := s.pendingTxs.TxsByAddr[record.To]; !ok {
 		s.pendingTxs.TxsByAddr[record.To] = map[string]types2.RecordsModelByTxHash{
-			record.TickHash: {},
+			record.TxHash: {},
 		}
 	}
 	s.pendingTxs.TxsByAddr[record.To][record.TickHash][record.TxHash] = record
 
 	if _, ok := s.pendingTxs.TxsByTickHash[record.TickHash]; !ok {
-		s.pendingTxs.TxsByTickHash[record.TickHash] = make(map[string]*dao.AccountRecordsModel)
+		s.pendingTxs.TxsByTickHash[record.TickHash] = types2.RecordsModelByTxHash{
+			record.TxHash: {},
+		}
 	}
 	s.pendingTxs.TxsByTickHash[record.TickHash][record.TxHash] = record
 
