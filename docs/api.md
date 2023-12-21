@@ -26,8 +26,8 @@ response(json) (sorted by balance desc)
         "page_size": int
         "list": [
             {
-                "id": int,
-                "account_id": int,
+                "id": string,
+                "account_id": string,
                 "address": string,
                 "tick": string
                 "tick_hash": string
@@ -79,7 +79,7 @@ response(json) (sorted by block_at desc, tx_index desc)
         "page_size": int
         "list": [
             {
-                "id": int,
+                "id": string,
                 "block": int,
                 "block_at": int,
                 "is_pending": bool,
@@ -148,7 +148,7 @@ response(json)
         "page_size": int
         "list": [
             {
-                "id": int,
+                "id": string,
                 "tick": string,
                 "tick_hash": string,
                 "tx_index": int,
@@ -202,8 +202,8 @@ response(json)
     "data": {
         "wallet": [
             {
-                "id": int,
-                "account_id": int,
+                "id": string,
+                "account_id": string,
                 "address": string,
                 "tick": string,
                 "tick_hash": string,
@@ -275,7 +275,7 @@ response(json) (sorted by op_index desc)
     "data": {
         "list": [
             {
-                "id": int,
+                "id": string,
                 "block": int,
                 "block_at": int,
                 "tx_hash": string,
