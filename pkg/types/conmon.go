@@ -55,3 +55,11 @@ type ListInscriptionRsp struct {
 	CommonListRsp
 	List []*dao.InscriptionModel `json:"list"`
 }
+
+type GetRecordReq struct {
+	TxHash string `json:"tx_hash" form:"tx_hash" binding:"required"`
+}
+
+type GetRecordRsp struct {
+	List []*dao.AccountRecordsModel `json:"list"`
+}

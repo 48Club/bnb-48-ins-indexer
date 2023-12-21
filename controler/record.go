@@ -63,3 +63,19 @@ func (c *RecordController) List(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, res)
 }
+
+func (c *RecordController) Get(ctx *gin.Context) {
+	var req bnb48types.GetRecordReq
+	if err := ctx.ShouldBind(&req); err != nil {
+		utils.FailResponse(ctx, err.Error())
+		return
+	}
+
+	res, err := c.recordS.Get(req)
+	if err != nil {
+		utils.FailResponse(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(ctx, res)
+}
