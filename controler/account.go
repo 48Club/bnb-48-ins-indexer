@@ -3,6 +3,7 @@ package controler
 import (
 	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
+	"bnb-48-ins-indexer/pkg/types"
 	bnb48types "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
 	"bnb-48-ins-indexer/service"
@@ -12,14 +13,16 @@ import (
 )
 
 type AccountController struct {
-	accountS  *service.AccountService
-	walletDao dao.IAccountWallet
+	accountS   *service.AccountService
+	walletDao  dao.IAccountWallet
+	pendingTxs *types.GlobalVariable
 }
 
-func NewAccountController() *AccountController {
+func NewAccountController(pendingTxs *types.GlobalVariable) *AccountController {
 	return &AccountController{
-		accountS:  service.NewAccountService(),
-		walletDao: &dao.AccountWalletHandler{},
+		accountS:   service.NewAccountService(),
+		walletDao:  &dao.AccountWalletHandler{},
+		pendingTxs: pendingTxs,
 	}
 }
 
@@ -60,7 +63,18 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 	}
 
 	for _, v := range res.Wallet {
-		if c.walletDao.LoadChanges(db, v) != nil {
+		_txsByAddr, ok := c.pendingTxs.TxsByAddr[v.Address]
+		if !ok {
+			break
+		}
+		_txsByTickHash, ok := _txsByAddr[v.TickHash]
+		if !ok {
+			break
+		}
+		for _, tx := range _txsByTickHash {
+			v.Changes = append(v.Changes, *tx)
+		}
+		if c.walletDao.LoadChanges(db, v, len(v.Changes)) != nil {
 			log.Println("LoadChanges err:", err)
 		}
 	}

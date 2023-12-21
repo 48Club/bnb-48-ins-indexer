@@ -4,6 +4,7 @@ import (
 	"bnb-48-ins-indexer/config"
 	"bnb-48-ins-indexer/pkg/database"
 	"bnb-48-ins-indexer/pkg/log"
+	"bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/router"
 	"context"
 	"fmt"
@@ -14,27 +15,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
-func NewCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "api",
-		Short: "api",
-		Run: func(cmd *cobra.Command, args []string) {
-			setup()
-		},
-	}
-}
-
-func setup() {
+func Start(pendingTxs *types.GlobalVariable) {
 	app := config.GetConfig().App
 	log.Init("api.log")
 	database.NewMysql()
 
 	gin.DefaultWriter = log.Write
-	r := router.NewBotRoute()
+	r := router.NewBotRoute(pendingTxs)
 	httpSrv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", app.Port),
 		Handler: r,
@@ -52,13 +42,15 @@ func setup() {
 		})
 	}()
 
-	if err := httpSrv.ListenAndServe(); err != nil {
-		if err != http.ErrServerClosed {
-			log.Log.Fatal("failed to run status server",
-				zap.Error(err),
-			)
+	go func() {
+		if err := httpSrv.ListenAndServe(); err != nil {
+			if err != http.ErrServerClosed {
+				log.Log.Fatal("failed to run status server",
+					zap.Error(err),
+				)
+			}
 		}
-	}
+	}()
 }
 
 func WaitForSignal(callback func()) {

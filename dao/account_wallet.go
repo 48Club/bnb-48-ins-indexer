@@ -17,7 +17,7 @@ type IAccountWallet interface {
 	SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error)
 	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
-	LoadChanges(db *gorm.DB, model *AccountWalletModel) error
+	LoadChanges(db *gorm.DB, model *AccountWalletModel, relimit int) error
 }
 
 type AccountWalletModel struct {
@@ -139,7 +139,10 @@ func (h *AccountWalletHandler) UpdateBalance(db *gorm.DB, id uint64, data map[st
 	return nil
 }
 
-func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletModel) error {
+func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletModel, relimit int) error {
+	if relimit >= 20 {
+		return nil
+	}
 	accountRecordsModel := []AccountRecordsModel{}
 	db = db.Table((&AccountRecordsHandler{}).TableName())
 	addresss := utils.Address2Format(model.Address)
@@ -154,12 +157,10 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 		return nil
 	}
 
-	err := db.Limit(20).Order("block desc, tx_index desc, op_index desc").Find(&accountRecordsModel).Error
-	for k, v := range accountRecordsModel {
-		accountRecordsModel[k].InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
-	}
-	if err == nil {
-		model.Changes = accountRecordsModel
+	err := db.Limit(20 - relimit).Order("block desc, tx_index desc, op_index desc").Find(&accountRecordsModel).Error
+	for _, v := range accountRecordsModel {
+		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
+		model.Changes = append(model.Changes, v)
 	}
 	return err
 }

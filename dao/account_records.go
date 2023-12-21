@@ -18,7 +18,8 @@ type IAccountRecords interface {
 type AccountRecordsModel struct {
 	Id          uint64                   `json:"id,string" gorm:"primaryKey"`
 	Block       uint64                   `json:"block"`
-	BlockAt     uint64                   `json:"block_at"` // timestamp in second
+	BlockAt     uint64                   `json:"block_at"`            // timestamp in second
+	IsPending   bool                     `json:"is_pending" gorm:"-"` // true: pending, false: confirmed
 	TxHash      string                   `json:"tx_hash"`
 	OpIndex     uint64                   `json:"op_index"`
 	TxIndex     uint64                   `json:"tx_index"`
