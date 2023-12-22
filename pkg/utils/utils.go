@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,7 +20,7 @@ var (
 	londonSigner = types.NewLondonSigner(bscChainID)
 	eIP155Signer = types.NewEIP155Signer(bscChainID)
 
-	maxU256, _ = StringToBigint("115792089237316195423570985008687907853269984665640564039457584007913129639935")
+	maxU256 = abi.MaxUint256
 )
 
 func GetTxFrom(tx *types.Transaction) common.Address {
