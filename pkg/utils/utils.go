@@ -18,6 +18,8 @@ var (
 	bscChainID   = big.NewInt(56)
 	londonSigner = types.NewLondonSigner(bscChainID)
 	eIP155Signer = types.NewEIP155Signer(bscChainID)
+
+	maxU256, _ = StringToBigint("115792089237316195423570985008687907853269984665640564039457584007913129639935")
 )
 
 func GetTxFrom(tx *types.Transaction) common.Address {
@@ -50,7 +52,6 @@ func StringToBigint(data string) (*big.Int, error) {
 }
 
 func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
-
 	bytes, err := hexutil.Decode(str)
 	if err != nil {
 		return nil, err
@@ -66,10 +67,84 @@ func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if ok := verifyInscription(obj); !ok {
+			return nil, nil
+		}
+
 		return obj, nil
 	} else {
 		return nil, nil
 	}
+}
+
+func verifyInscription(ins *helper.BNB48Inscription) bool {
+	if len(ins.P) > 42 {
+		return false
+	}
+
+	if len(ins.Tick) > 42 {
+		return false
+	}
+
+	if len(ins.TickHash) > 66 {
+		return false
+	}
+
+	if len(ins.To) > 42 {
+		return false
+	}
+
+	miners := strings.Join(ins.Miners, ",")
+	if len(miners) > 2048 {
+		return false
+	}
+
+	if ins.Decimals != "" {
+		decimals, err := StringToBigint(ins.Decimals)
+		if err != nil {
+			return false
+		}
+
+		if decimals.Uint64() > 18 {
+			return false
+		}
+	}
+
+	if ins.Max != "" {
+		max, err := StringToBigint(ins.Max)
+		if err != nil {
+			return false
+		}
+
+		if max.Cmp(maxU256) > 0 || max.Uint64() < 1 {
+			return false
+		}
+	}
+
+	if ins.Lim != "" {
+		lim, err := StringToBigint(ins.Lim)
+		if err != nil {
+			return false
+		}
+
+		if lim.Cmp(maxU256) > 0 || lim.Uint64() < 1 {
+			return false
+		}
+	}
+
+	if ins.Amt != "" {
+		amt, err := StringToBigint(ins.Amt)
+		if err != nil {
+			return false
+		}
+
+		if amt.Cmp(maxU256) > 0 || amt.Uint64() < 1 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func IsValidERCAddress(address interface{}) bool {
