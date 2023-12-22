@@ -254,7 +254,7 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 	}
 
 	decimals, err := utils.StringToBigint(insc.Decimals)
-	if err != nil || decimals.Uint64() < 1 || decimals.Uint64() > 18 {
+	if err != nil || decimals.Uint64() > 18 {
 		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
 		return nil
 	}
