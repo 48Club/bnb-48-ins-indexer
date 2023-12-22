@@ -63,18 +63,13 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 	}
 
 	for _, v := range res.Wallet {
-		_txsByAddr, ok := c.pendingTxs.TxsByAddr[v.Address]
-		if !ok {
-			break
+		if _txsByAddr, ok := c.pendingTxs.TxsByAddr[v.Address]; ok {
+			if _txsByTickHash, ok := _txsByAddr[v.TickHash]; ok {
+				for _, tx := range _txsByTickHash {
+					v.Changes = append(v.Changes, *tx)
+				}
+			}
 		}
-		_txsByTickHash, ok := _txsByAddr[v.TickHash]
-		if !ok {
-			break
-		}
-		for _, tx := range _txsByTickHash {
-			v.Changes = append(v.Changes, *tx)
-		}
-
 	}
 
 	for _, v := range res.Wallet {
