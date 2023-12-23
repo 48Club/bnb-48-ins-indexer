@@ -18,6 +18,7 @@ type IAccountWallet interface {
 	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
 	LoadChanges(db *gorm.DB, model *AccountWalletModel, relimit int) error
+	ORMSelectColumn() []string
 }
 
 type AccountWalletModel struct {
@@ -26,7 +27,7 @@ type AccountWalletModel struct {
 	Address   string                `json:"address"`
 	Tick      string                `json:"tick"`
 	TickHash  string                `json:"tick_hash"`
-	Decimals  uint8                 `json:"decimals" gorm:"-"`
+	Decimals  uint8                 `json:"decimals" gorm:"->"`
 	Balance   string                `json:"balance"`
 	Changes   []AccountRecordsModel `json:"changes" gorm:"-"`
 	CreateAt  int64                 `json:"create_at"`
@@ -83,8 +84,8 @@ func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId 
 	return &model, nil
 }
 
-func (h *AccountWalletHandler) selectByAddress(db *gorm.DB, address string) *gorm.DB {
-	return db.Table(h.TableName()).Where("address = ?", address)
+func (h *AccountWalletHandler) ORMSelectColumn() []string {
+	return []string{"`account_wallet`.`id`", "`account_wallet`.`account_id`", "`account_wallet`.`address`", "`account_wallet`.`balance`", "`account_wallet`.`create_at`", "`account_wallet`.`delete_at`", "`account_wallet`.`update_at`", "`inscription`.`decimals`", "`inscription`.`tick`", "`inscription`.`tick_hash`"}
 }
 
 func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error) {
@@ -93,7 +94,7 @@ func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address stri
 		err   error
 	)
 
-	if err = h.selectByAddress(db, address).Where("tick_hash in ?", tickHash).Find(&model).Error; err != nil {
+	if err = db.Table("`inscription`").Joins("LEFT JOIN `account_wallet` ON `account_wallet`.`tick_hash` = `inscription`.`tick_hash` AND `account_wallet`.`address` = ?", address).Where("`inscription`.`tick_hash` in ?", tickHash).Select(h.ORMSelectColumn()).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
@@ -105,7 +106,7 @@ func (h *AccountWalletHandler) SelectByAddress(db *gorm.DB, address string) ([]*
 		err   error
 	)
 
-	if err = h.selectByAddress(db, address).Find(&model).Error; err != nil {
+	if err = db.Table("`account_wallet`").Joins("RIGHT JOIN `inscription` ON `inscription`.`tick_hash` = `account_wallet`.`tick_hash`").Where("`account_wallet`.`address` = ?", address).Select(h.ORMSelectColumn()).Find(&model).Error; err != nil {
 		return nil, err
 	}
 

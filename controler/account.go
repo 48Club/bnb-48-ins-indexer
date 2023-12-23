@@ -57,12 +57,12 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 		return
 	}
 
-	if c.checkBalance(req, res) != nil {
-		utils.FailResponse(ctx, err.Error())
-		return
-	}
-
 	for _, v := range res.Wallet {
+		if v.CreateAt == 0 {
+			v.Address = req.Address
+			v.Balance = "0"
+			continue
+		}
 		if _txsByAddr, ok := c.pendingTxs.TxsByAddr[v.Address]; ok {
 			if _txsByTickHash, ok := _txsByAddr[v.TickHash]; ok {
 				for _, tx := range _txsByTickHash {
@@ -70,34 +70,10 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 				}
 			}
 		}
-	}
-
-	for _, v := range res.Wallet {
 		if c.walletDao.LoadChanges(db, v, len(v.Changes)) != nil {
 			log.Println("LoadChanges err:", err)
 		}
 	}
 
 	utils.SuccessResponse(ctx, res)
-}
-
-func (c *AccountController) checkBalance(req bnb48types.AccountBalanceReq, res *bnb48types.AccountBalanceRsp) error {
-	var (
-		inss               = []*dao.InscriptionModel{}
-		decimalsByTickHash = map[string]uint8{}
-	)
-
-	if err := c.accountS.GetInscription(req.TickHash, &inss); err != nil || len(inss) == 0 {
-		return err
-	}
-
-	for _, v := range inss {
-		decimalsByTickHash[v.TickHash] = v.Decimals
-	}
-
-	for k, v := range res.Wallet {
-		res.Wallet[k].Decimals = decimalsByTickHash[v.TickHash]
-	}
-
-	return nil
 }
