@@ -19,6 +19,7 @@ type IAccountWallet interface {
 	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
 	LoadChanges(db *gorm.DB, model *AccountWalletModel, relimit int) error
+	ORMSelectColumn() []string
 }
 
 type AccountWalletModel struct {
@@ -84,13 +85,17 @@ func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId 
 	return &model, nil
 }
 
+func (h *AccountWalletHandler) ORMSelectColumn() []string {
+	return []string{"b.`id`", "b.`account_id`", "b.`address`", "b.`balance`", "b.`create_at`", "b.`delete_at`", "b.`update_at`", "a.`decimals`", "a.`tick`", "a.`tick_hash`"}
+}
+
 func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error) {
 	var (
 		model []*AccountWalletModel
 		err   error
 	)
 
-	if err = db.Table("inscription AS a").Joins("LEFT JOIN account_wallet AS b ON a.tick_hash = b.tick_hash AND b.address = ?", address).Where("a.tick_hash in ?", tickHash).Select("b.`id`", "b.`account_id`", "b.`address`", "b.`balance`", "b.`create_at`", "b.`delete_at`", "b.`update_at`", "a.`decimals`", "a.`tick`", "a.`tick_hash`").Find(&model).Error; err != nil {
+	if err = db.Table("inscription AS a").Joins("LEFT JOIN account_wallet AS b ON a.tick_hash = b.tick_hash AND b.address = ?", address).Where("a.tick_hash in ?", tickHash).Select(h.ORMSelectColumn()).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
@@ -102,7 +107,7 @@ func (h *AccountWalletHandler) SelectByAddress(db *gorm.DB, address string) ([]*
 		err   error
 	)
 
-	if err = db.Table(h.TableName()).Where("address = ?", address).Find(&model).Error; err != nil {
+	if err = db.Table("account_wallet as b").Joins("RIGHT JOIN inscription AS a ON a.tick_hash = b.tick_hash").Where("b.address = ?", address).Select(h.ORMSelectColumn()).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
