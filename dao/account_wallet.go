@@ -2,6 +2,7 @@ package dao
 
 import (
 	"bnb-48-ins-indexer/pkg/utils"
+	"errors"
 	"fmt"
 	"time"
 
@@ -83,17 +84,13 @@ func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId 
 	return &model, nil
 }
 
-func (h *AccountWalletHandler) selectByAddress(db *gorm.DB, address string) *gorm.DB {
-	return db.Table(h.TableName()).Where("address = ?", address)
-}
-
 func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error) {
 	var (
 		model []*AccountWalletModel
 		err   error
 	)
 
-	if err = h.selectByAddress(db, address).Where("tick_hash in ?", tickHash).Find(&model).Error; err != nil {
+	if err = db.Table("inscription AS a").Joins("LEFT JOIN account_wallet AS b ON a.tick_hash = b.tick_hash AND b.address = ?", address).Where("a.tick_hash in ?", tickHash).Select("b.`id`", "b.`account_id`", "b.`address`", "b.`balance`", "b.`create_at`", "b.`delete_at`", "b.`update_at`", "a.`decimals`", "a.`tick`", "a.`tick_hash`").Find(&model).Error; err != nil {
 		return nil, err
 	}
 
@@ -105,7 +102,7 @@ func (h *AccountWalletHandler) SelectByAddress(db *gorm.DB, address string) ([]*
 		err   error
 	)
 
-	if err = h.selectByAddress(db, address).Find(&model).Error; err != nil {
+	if err = db.Table(h.TableName()).Where("address = ?", address).Find(&model).Error; err != nil {
 		return nil, err
 	}
 
@@ -157,6 +154,7 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 		return nil
 	}
 
+	errors.Is(db.Error, gorm.ErrRecordNotFound)
 	err := db.Limit(20 - relimit).Order("block desc, tx_index desc, op_index desc").Find(&accountRecordsModel).Error
 	for _, v := range accountRecordsModel {
 		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input)

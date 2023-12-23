@@ -63,6 +63,10 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 	}
 
 	for _, v := range res.Wallet {
+		if v.CreateAt == 0 {
+			v.Balance = "0"
+			continue
+		}
 		if _txsByAddr, ok := c.pendingTxs.TxsByAddr[v.Address]; ok {
 			if _txsByTickHash, ok := _txsByAddr[v.TickHash]; ok {
 				for _, tx := range _txsByTickHash {
@@ -70,9 +74,6 @@ func (c *AccountController) Balance(ctx *gin.Context) {
 				}
 			}
 		}
-	}
-
-	for _, v := range res.Wallet {
 		if c.walletDao.LoadChanges(db, v, len(v.Changes)) != nil {
 			log.Println("LoadChanges err:", err)
 		}
