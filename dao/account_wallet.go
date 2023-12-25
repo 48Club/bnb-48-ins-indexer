@@ -147,11 +147,8 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 	accountRecordsModel := []AccountRecordsModel{}
 	db = db.Table((&AccountRecordsHandler{}).TableName())
 	addresss := utils.Address2Format(model.Address)
-	for k, v := range addresss {
-		if k == 0 {
-			db.Where("input like ?", fmt.Sprintf("%%%s%%", v))
-			continue
-		}
+	db.Where("`from` = ?", model.Address)
+	for _, v := range addresss {
 		db.Or("input like ?", fmt.Sprintf("%%%s%%", v))
 	}
 	if len(addresss) == 0 {
