@@ -15,7 +15,7 @@ type IAccountWallet interface {
 	SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error)
 	SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error)
 	SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error)
-	FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error)
+	Find(db *gorm.DB) ([]*AccountWalletModel, error)
 	Count(db *gorm.DB) (int64, error)
 	LoadChanges(db *gorm.DB, model *AccountWalletModel, relimit int) error
 	ORMSelectColumn() []string
@@ -56,13 +56,13 @@ func (h *AccountWalletHandler) Count(db *gorm.DB) (int64, error) {
 	return res, nil
 }
 
-func (h *AccountWalletHandler) FindByTickHash(db *gorm.DB, tickHash string) ([]*AccountWalletModel, error) {
+func (h *AccountWalletHandler) Find(db *gorm.DB) ([]*AccountWalletModel, error) {
 	var (
 		datas []*AccountWalletModel
 		err   error
 	)
 
-	db = db.Where("delete_at = 0 and tick_hash = ?", tickHash)
+	db = db.Where("delete_at = 0")
 
 	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
 		return nil, err

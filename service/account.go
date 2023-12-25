@@ -53,6 +53,8 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 	if err := db.Transaction(func(tx *gorm.DB) error {
 
 		tx = tx.Order("CAST(`balance` as UNSIGNED) DESC").Where("CAST(`balance` as UNSIGNED) > 0")
+		tx = tx.Where("`tick_hash` = ?", req.TickHash)
+
 		var err error
 
 		count, err = s.walletDao.Count(tx)
@@ -64,7 +66,7 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 		}
 		tx = tx.Offset(int(req.Page) * int(req.PageSize))
 
-		res, err = s.walletDao.FindByTickHash(tx, req.TickHash)
+		res, err = s.walletDao.Find(tx)
 		if err != nil {
 			return err
 		}

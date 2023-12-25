@@ -58,7 +58,7 @@ func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
 		return nil, err
 	}
 
-	utfStr := strings.ToLower(string(bytes))
+	utfStr := string(bytes)
 
 	if len(utfStr) >= 6 && utfStr[:6] == "data:," {
 		utfStr = utfStr[6:]
@@ -71,6 +71,11 @@ func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
 
 		if ok := verifyInscription(obj); !ok {
 			return nil, nil
+		}
+
+		obj.To = strings.ToLower(obj.To)
+		if len(obj.Miners) > 0 {
+			obj.Miners = strings.Split(strings.ToLower(strings.Join(obj.Miners, ",")), ",")
 		}
 
 		return obj, nil
