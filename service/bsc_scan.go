@@ -238,6 +238,9 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 			return err
 		}
 	case "burn":
+		if err = s.burn(db, block, tx, data, index, isPending...); err != nil {
+			return err
+		}
 	case "approve":
 	case "transferFrom":
 	default:
@@ -621,8 +624,9 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscript
 	return nil
 }
 
-func (s *BscScanService) burn() error {
-	return nil
+func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) error {
+	inscription.To = "0x000000000000000000000000000000000000dead"
+	return s.transfer(db, block, tx, inscription, index, isPending...)
 }
 
 func (s *BscScanService) approve() error {
