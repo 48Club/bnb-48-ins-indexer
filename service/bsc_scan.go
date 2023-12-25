@@ -238,7 +238,7 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 			return err
 		}
 	case "burn":
-		if err = s.burn(db, block, tx, data, index); err != nil {
+		if err = s.burn(db, block, tx, data, index, isPending...); err != nil {
 			return err
 		}
 	case "approve":
