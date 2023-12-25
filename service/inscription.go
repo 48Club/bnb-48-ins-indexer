@@ -30,11 +30,7 @@ func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bn
 	var res []*dao.InscriptionModel
 	var count int64
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		countTx := tx.Session(&gorm.Session{Context: tx.Statement.Context})
-		if req.PageSize > 0 {
-			tx = tx.Limit(int(req.PageSize))
-		}
-		tx = tx.Offset(int(req.Page) * int(req.PageSize))
+
 		if req.Protocol != "" {
 			tx = tx.Where("protocol = ?", req.Protocol)
 		}
@@ -50,15 +46,22 @@ func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bn
 		if req.DeployBy != "" {
 			tx = tx.Where("deploy_by = ?", req.DeployBy)
 		}
+
 		var err error
+		count, err = s.inscriptionDao.Count(tx)
+		if err != nil {
+			return err
+		}
+		if req.PageSize > 0 {
+			tx = tx.Limit(int(req.PageSize))
+		}
+		tx = tx.Offset(int(req.Page) * int(req.PageSize))
+
 		res, err = s.inscriptionDao.Find(tx)
 		if err != nil {
 			return err
 		}
-		count, err = s.inscriptionDao.Count(countTx)
-		if err != nil {
-			return err
-		}
+
 		return nil
 	}); err != nil {
 		return nil, err

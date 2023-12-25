@@ -51,21 +51,20 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 		count int64
 	)
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		countTx := tx.Where("CAST(`balance` as UNSIGNED) > 0").Session(&gorm.Session{Context: tx.Statement.Context})
 
 		tx = tx.Order("CAST(`balance` as UNSIGNED) DESC").Where("CAST(`balance` as UNSIGNED) > 0")
+		var err error
+
+		count, err = s.walletDao.Count(tx)
+		if err != nil {
+			return err
+		}
 		if req.PageSize > 0 {
 			tx = tx.Limit(int(req.PageSize))
 		}
 		tx = tx.Offset(int(req.Page) * int(req.PageSize))
-		var err error
 
 		res, err = s.walletDao.FindByTickHash(tx, req.TickHash)
-		if err != nil {
-			return err
-		}
-
-		count, err = s.walletDao.Count(countTx)
 		if err != nil {
 			return err
 		}

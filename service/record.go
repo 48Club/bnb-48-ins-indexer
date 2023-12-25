@@ -24,26 +24,27 @@ func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListReco
 	var res []*dao.AccountRecordsModel
 	var count int64
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		countTx := tx.Session(&gorm.Session{Context: tx.Statement.Context})
 
 		tx = tx.Order("`block` desc, `tx_index` desc")
-		if req.PageSize > 0 {
-			tx = tx.Limit(int(req.PageSize))
-		}
+
 		if req.TickHash != "" {
 			tx = tx.Where("`tick_hash` = ?", req.TickHash)
 		}
-
-		tx = tx.Offset(int(req.Page) * int(req.PageSize))
 		var err error
+		count, err = s.recordDao.Count(tx)
+		if err != nil {
+			return err
+		}
+		if req.PageSize > 0 {
+			tx = tx.Limit(int(req.PageSize))
+		}
+		tx = tx.Offset(int(req.Page) * int(req.PageSize))
+
 		res, err = s.recordDao.Find(tx)
 		if err != nil {
 			return err
 		}
-		count, err = s.recordDao.Count(countTx)
-		if err != nil {
-			return err
-		}
+
 		return nil
 	}); err != nil {
 		return nil, err
