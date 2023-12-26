@@ -31,6 +31,8 @@ func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bn
 	var count int64
 	if err := db.Transaction(func(tx *gorm.DB) error {
 
+		tx = tx.Order("`holders` DESC, `create_at` DESC")
+
 		if req.Protocol != "" {
 			tx = tx.Where("protocol = ?", req.Protocol)
 		}
