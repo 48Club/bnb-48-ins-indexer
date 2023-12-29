@@ -200,13 +200,14 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 	defer db.Rollback()
 
 	for index, tx := range block.Transactions() {
-		db.SavePoint("sp1")
+		// 当索引出现错误时, 需要回退区块重新同步需要添加 sp 事务
+		// db.SavePoint("sp1")
 
 		if err := s._work(db, block, tx, index, isPending...); err != nil {
-			if strings.Contains(strings.ToLower(err.Error()), strings.ToLower("1062 (23000): Duplicate entry")) {
-				db.RollbackTo("sp1")
-				continue
-			}
+			// if strings.Contains(strings.ToLower(err.Error()), strings.ToLower("1062 (23000): Duplicate entry")) {
+			// 	db.RollbackTo("sp1")
+			// 	continue
+			// }
 			return err
 		}
 	}
