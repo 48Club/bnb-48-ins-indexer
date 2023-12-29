@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -19,8 +20,8 @@ var (
 	bscChainID   = big.NewInt(56)
 	londonSigner = types.NewLondonSigner(bscChainID)
 	eIP155Signer = types.NewEIP155Signer(bscChainID)
-
-	maxU256 = abi.MaxUint256
+	dataRe, _    = regexp.Compile("data:([^\"]*),(.*)")
+	maxU256      = abi.MaxUint256
 )
 
 func GetTxFrom(tx *types.Transaction) common.Address {
@@ -52,7 +53,12 @@ func StringToBigint(data string) (*big.Int, error) {
 	return bigint, nil
 }
 
-func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
+func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscription, error) {
+
+	if len(bn) > 0 && bn[0] >= 48_484_848 /*支持 application/json 的区块高度*/ {
+		return InputToBNB48Inscription2(str)
+	}
+
 	bytes, err := hexutil.Decode(str)
 	if err != nil {
 		return nil, err
@@ -78,10 +84,62 @@ func InputToBNB48Inscription(str string) (*helper.BNB48Inscription, error) {
 			obj.Miners = strings.Split(strings.ToLower(strings.Join(obj.Miners, ",")), ",")
 		}
 
-		return obj, nil
+		return []*helper.BNB48Inscription{obj}, nil
 	} else {
 		return nil, nil
 	}
+}
+
+func InputToBNB48Inscription2(s string) (inss []*helper.BNB48Inscription, err error) {
+	bytes, err := hexutil.Decode(s)
+	if err != nil {
+		return nil, err
+	}
+
+	utfStr := string(bytes)
+
+	rs := dataRe.FindStringSubmatch(utfStr)
+	if len(rs) != 3 {
+		return nil, nil
+	}
+	if rs[1] != "" && rs[1] != "application/json" {
+		return nil, nil
+	}
+
+	s = rs[2]
+	var tmp interface{}
+	_ = json.Unmarshal([]byte(s), &tmp)
+
+	switch tmp.(type) {
+	case map[string]interface{}:
+		var i helper.BNB48Inscription
+		if err = json.Unmarshal([]byte(s), &i); err == nil {
+			inss = append(inss, &i)
+		}
+	case []interface{}:
+		var i []*helper.BNB48Inscription
+		if err = json.Unmarshal([]byte(s), &i); err == nil {
+			inss = append(inss, i...)
+		}
+	}
+	onlyOne := len(inss) == 1
+	ops := mapset.NewSet[string]()
+	for k, ins := range inss {
+		if ok := verifyInscription(ins); !ok {
+			return nil, nil
+		}
+		inss[k].To = strings.ToLower(ins.To)
+		if len(ins.Miners) > 0 {
+			inss[k].Miners = strings.Split(strings.ToLower(strings.Join(ins.Miners, ",")), ",")
+		}
+		ops.Add(ins.Op)
+	}
+
+	if !onlyOne && ops.ContainsAny("deploy", "recap", "mint") {
+		return nil, nil
+	}
+
+	return inss, err
 }
 
 func verifyInscription(ins *helper.BNB48Inscription) bool {
