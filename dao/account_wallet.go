@@ -147,10 +147,14 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 	accountRecordsModel := []AccountRecordsModel{}
 	db = db.Table((&AccountRecordsHandler{}).TableName())
 	addresss := utils.Address2Format(model.Address)
-	db.Where("`from` = ?", model.Address)
-	for _, v := range addresss {
-		db.Or("input like ?", fmt.Sprintf("%%%s%%", v))
-	}
+	db.Where(
+		func(as []string, tx *gorm.DB) *gorm.DB {
+			for _, v := range as {
+				tx.Or("input like ?", fmt.Sprintf("%%%s%%", v))
+			}
+			return tx
+		}(addresss, db),
+	).Where("`from` = ?", model.Address).Where("delete_at = 0").Where("`tick_hash` = ?", model.TickHash)
 	if len(addresss) == 0 {
 		return nil
 	}
