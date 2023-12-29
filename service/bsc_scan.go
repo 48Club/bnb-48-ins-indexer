@@ -235,12 +235,12 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 
 		switch data.Op {
 		case "deploy":
-			if err = s.deploy(db, block, tx, data, index); err != nil {
+			if err = s.deploy(db, block, tx, data, index, isPending...); err != nil {
 				return err
 			}
 		case "recap":
 		case "mint":
-			if err = s.mint(db, block, tx, data, index); err != nil {
+			if err = s.mint(db, block, tx, data, index, isPending...); err != nil {
 				return err
 			}
 		case "transfer":
@@ -261,7 +261,10 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 	return nil
 }
 
-func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *helper.BNB48Inscription, index int) error {
+func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *helper.BNB48Inscription, index int, isPending ...bool) error {
+	if len(isPending) > 0 {
+		return nil
+	}
 	if insc.Tick == "" {
 		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
 		return nil
@@ -347,7 +350,10 @@ func (s *BscScanService) recap() error {
 	return nil
 }
 
-func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
+func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) error {
+	if len(isPending) > 0 {
+		return nil
+	}
 	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
