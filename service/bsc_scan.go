@@ -465,17 +465,18 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	// update inscription
-	insc.Minted = new(big.Int).Add(insc.Minted, amt)
+	minted := new(big.Int).Add(insc.Minted, amt)
 	inscUpdate := map[string]interface{}{
-		"minted": insc.Minted.String(),
+		"minted": minted.String(),
 	}
-	if insc.Minted.Cmp(insc.Max) == 0 {
+	if minted.Cmp(insc.Max) == 0 {
 		inscUpdate["status"] = 2 // mint end
 	}
 	if err = s.inscriptionDao.Update(db, insc.Id, inscUpdate); err != nil {
 		return err
 	}
 
+	insc.Minted = minted
 	return nil
 }
 
