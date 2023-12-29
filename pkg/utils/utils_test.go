@@ -10,11 +10,11 @@ import (
 
 func TestMapSet(t *testing.T) {
 	m := mapset.NewSet[string]()
-	m.Add("1")
-	m.Add("2")
-	m.Add("3")
-	assert.Equal(t, m.ContainsAny("1", "4"), true)
+	m.Append("deploy", "recap", "mint")
+	assert.Equal(t, m.ToSlice(), []string{"deploy", "recap", "mint"})
+	assert.Equal(t, m.ContainsOne("deploy"), true)
 }
+
 func TestInputToBNB48Inscription(t *testing.T) {
 	// deploy
 	input := "0x646174613a2c7b2270223a22626e622d3438222c226f70223a226465706c6f79222c227469636b223a2266616e73222c226d6178223a2233333838323330222c226c696d223a2231222c226d696e657273223a5b22307837326236316336303134333432643931343437306543376143323937356245333435373936633262225d7d"

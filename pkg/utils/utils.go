@@ -55,16 +55,16 @@ func StringToBigint(data string) (*big.Int, error) {
 
 func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscription, error) {
 
-	if len(bn) > 0 && bn[0] >= 34_778_248 /*支持 application/json 的区块高度*/ {
-		return InputToBNB48Inscription2(str)
-	}
-
 	bytes, err := hexutil.Decode(str)
 	if err != nil {
 		return nil, err
 	}
 
 	utfStr := string(bytes)
+
+	if len(bn) > 0 && bn[0] >= 34_778_248 /*支持 application/json 与 bulktTx 的区块高度*/ {
+		return InputToBNB48Inscription2(utfStr)
+	}
 
 	if len(utfStr) >= 6 && utfStr[:6] == "data:," {
 		utfStr = utfStr[6:]
@@ -90,13 +90,7 @@ func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscripti
 	}
 }
 
-func InputToBNB48Inscription2(s string) (inss []*helper.BNB48Inscription, err error) {
-	bytes, err := hexutil.Decode(s)
-	if err != nil {
-		return nil, err
-	}
-
-	utfStr := string(bytes)
+func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, err error) {
 
 	rs := dataRe.FindStringSubmatch(utfStr)
 	if len(rs) != 3 {
@@ -106,7 +100,7 @@ func InputToBNB48Inscription2(s string) (inss []*helper.BNB48Inscription, err er
 		return nil, nil
 	}
 
-	s = rs[2]
+	s := rs[2]
 	var tmp interface{}
 	_ = json.Unmarshal([]byte(s), &tmp)
 
@@ -122,8 +116,10 @@ func InputToBNB48Inscription2(s string) (inss []*helper.BNB48Inscription, err er
 			inss = append(inss, i...)
 		}
 	}
-	onlyOne := len(inss) == 1
+	mustCheckOP := len(inss) > 1
 	ops := mapset.NewSet[string]()
+	ops.Append("deploy", "recap", "mint")
+
 	for k, ins := range inss {
 		if ok := verifyInscription(ins); !ok {
 			return nil, nil
@@ -132,11 +128,10 @@ func InputToBNB48Inscription2(s string) (inss []*helper.BNB48Inscription, err er
 		if len(ins.Miners) > 0 {
 			inss[k].Miners = strings.Split(strings.ToLower(strings.Join(ins.Miners, ",")), ",")
 		}
-		ops.Add(ins.Op)
-	}
 
-	if !onlyOne && ops.ContainsAny("deploy", "recap", "mint") {
-		return nil, nil
+		if mustCheckOP && ops.ContainsOne(ins.Op) {
+			return nil, nil
+		}
 	}
 
 	return inss, err
