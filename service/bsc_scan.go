@@ -81,9 +81,12 @@ func (s *BscScanService) init() error {
 			return err
 		}
 
-		for _, ele := range strings.Split(ele.Miners, ",") {
-			miners.Add(ele)
+		if len(ele.Miners) >= 42 {
+			for _, ele := range strings.Split(ele.Miners, ",") {
+				miners.Add(ele)
+			}
 		}
+
 		insc.Miners = miners
 
 		s.inscriptions[ele.TickHash] = &insc
