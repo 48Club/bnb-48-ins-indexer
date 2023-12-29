@@ -157,7 +157,11 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 
 	err := db.Limit(20 - relimit).Order("block desc, tx_index desc, op_index desc").Find(&accountRecordsModel).Error
 	for _, v := range accountRecordsModel {
-		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input, v.Block)
+		changes, err := utils.InputToBNB48Inscription(v.Input, v.Block)
+		if err != nil || int(v.OpIndex) >= len(changes) {
+			continue
+		}
+		v.InputDecode = changes[v.OpIndex]
 		model.Changes = append(model.Changes, v)
 	}
 	return err

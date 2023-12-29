@@ -17,22 +17,22 @@ type IAccountRecords interface {
 }
 
 type AccountRecordsModel struct {
-	Id          uint64                     `json:"id,string" gorm:"primaryKey"`
-	Block       uint64                     `json:"block"`
-	BlockAt     uint64                     `json:"block_at"`            // timestamp in second
-	IsPending   bool                       `json:"is_pending" gorm:"-"` // true: pending, false: confirmed
-	TxHash      string                     `json:"tx_hash"`
-	OpIndex     uint64                     `json:"op_index"`
-	TxIndex     uint64                     `json:"tx_index"`
-	TickHash    string                     `json:"tick_hash"`
-	From        string                     `json:"from"`
-	To          string                     `json:"to"`
-	Input       string                     `json:"input"`
-	InputDecode []*helper.BNB48Inscription `json:"input_decode" gorm:"-"`
-	Type        uint8                      `json:"type"`
-	CreateAt    int64                      `json:"create_at"`
-	UpdateAt    int64                      `json:"update_at"`
-	DeleteAt    int64                      `json:"delete_at"`
+	Id          uint64                   `json:"id,string" gorm:"primaryKey"`
+	Block       uint64                   `json:"block"`
+	BlockAt     uint64                   `json:"block_at"`            // timestamp in second
+	IsPending   bool                     `json:"is_pending" gorm:"-"` // true: pending, false: confirmed
+	TxHash      string                   `json:"tx_hash"`
+	OpIndex     uint64                   `json:"op_index"`
+	TxIndex     uint64                   `json:"tx_index"`
+	TickHash    string                   `json:"tick_hash"`
+	From        string                   `json:"from"`
+	To          string                   `json:"to"`
+	Input       string                   `json:"input"`
+	InputDecode *helper.BNB48Inscription `json:"input_decode" gorm:"-"`
+	Type        uint8                    `json:"type"`
+	CreateAt    int64                    `json:"create_at"`
+	UpdateAt    int64                    `json:"update_at"`
+	DeleteAt    int64                    `json:"delete_at"`
 }
 
 type AccountRecordsHandler struct{}

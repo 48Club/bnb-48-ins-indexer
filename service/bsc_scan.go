@@ -647,7 +647,10 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 		return
 	}
 	record.IsPending = true
-	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input, record.Block)
+	changes, err := utils.InputToBNB48Inscription(record.Input, record.Block)
+	if err == nil && int(record.OpIndex) < len(changes) {
+		record.InputDecode = changes[record.OpIndex]
+	}
 
 	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
 	s.pendingTxs.TxsHash.Add(record.TxHash)
