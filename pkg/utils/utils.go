@@ -135,7 +135,7 @@ func InputToBNB48Inscription2(s string) (inss []*helper.BNB48Inscription, err er
 		ops.Add(ins.Op)
 	}
 
-	if !onlyOne && (ops.Contains("deploy") || ops.Contains("recap") || ops.Contains("mint")) {
+	if !onlyOne && ops.ContainsAny("deploy", "recap", "mint") {
 		return nil, nil
 	}
 
