@@ -209,42 +209,43 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 }
 
 func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, isPending ...bool) error {
-	data, err := utils.InputToBNB48Inscription(hexutil.Encode(tx.Data()))
+	datas, err := utils.InputToBNB48Inscription(hexutil.Encode(tx.Data()), block.NumberU64())
 	if err != nil {
 		log.Sugar.Error(err)
 		return nil
 	}
+	for opIndex, data := range datas {
+		if data == nil {
+			return nil
+		}
 
-	if data == nil {
-		return nil
-	}
+		if data.P != "bnb-48" {
+			return nil
+		}
 
-	if data.P != "bnb-48" {
-		return nil
-	}
-
-	switch data.Op {
-	case "deploy":
-		if err = s.deploy(db, block, tx, data, index); err != nil {
-			return err
+		switch data.Op {
+		case "deploy":
+			if err = s.deploy(db, block, tx, data, index); err != nil {
+				return err
+			}
+		case "recap":
+		case "mint":
+			if err = s.mint(db, block, tx, data, index); err != nil {
+				return err
+			}
+		case "transfer":
+			if err = s.transfer(db, block, tx, data, index, opIndex, isPending...); err != nil {
+				return err
+			}
+		case "burn":
+			if err = s.burn(db, block, tx, data, index, opIndex, isPending...); err != nil {
+				return err
+			}
+		case "approve":
+		case "transferFrom":
+		default:
+			log.Sugar.Debugf("tx: %s, error: can not support %s op", tx.Hash().Hex(), data.Op)
 		}
-	case "recap":
-	case "mint":
-		if err = s.mint(db, block, tx, data, index); err != nil {
-			return err
-		}
-	case "transfer":
-		if err = s.transfer(db, block, tx, data, index, isPending...); err != nil {
-			return err
-		}
-	case "burn":
-		if err = s.burn(db, block, tx, data, index, isPending...); err != nil {
-			return err
-		}
-	case "approve":
-	case "transferFrom":
-	default:
-		log.Sugar.Debugf("tx: %s, error: can not support %s op", tx.Hash().Hex(), data.Op)
 	}
 
 	return nil
@@ -462,7 +463,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	return nil
 }
 
-func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) error {
+func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
@@ -475,7 +476,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
-	amt, err := s.transferForFrom(db, block, tx, inscription, index, isPending...)
+	amt, err := s.transferForFrom(db, block, tx, inscription, index, opIndex, isPending...)
 	if err != nil {
 		return err
 	}
@@ -490,7 +491,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 	return nil
 }
 
-func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) (*big.Int, error) {
+func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) (*big.Int, error) {
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	zero := new(big.Int)
 
@@ -534,6 +535,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		Block:    block.NumberU64(),
 		TxHash:   tx.Hash().Hex(),
 		TxIndex:  uint64(index),
+		OpIndex:  uint64(opIndex),
 		TickHash: inscription.TickHash,
 		BlockAt:  block.Time(),
 		From:     from,
@@ -624,9 +626,9 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscript
 	return nil
 }
 
-func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int, isPending ...bool) error {
+func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
 	inscription.To = "0x000000000000000000000000000000000000dead"
-	return s.transfer(db, block, tx, inscription, index, isPending...)
+	return s.transfer(db, block, tx, inscription, index, opIndex, isPending...)
 }
 
 func (s *BscScanService) approve() error {
@@ -645,7 +647,7 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 		return
 	}
 	record.IsPending = true
-	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input)
+	record.InputDecode, _ = utils.InputToBNB48Inscription(record.Input, record.Block)
 
 	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
 	s.pendingTxs.TxsHash.Add(record.TxHash)

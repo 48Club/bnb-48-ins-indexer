@@ -50,7 +50,7 @@ func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListReco
 		return nil, err
 	}
 	for k, v := range res {
-		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input)
+		v.InputDecode, _ = utils.InputToBNB48Inscription(v.Input, v.Block)
 		res[k] = v
 	}
 	resp := &bnb48types.ListRecordRsp{
@@ -71,7 +71,7 @@ func (s *RecordService) Get(req bnb48types.GetRecordReq) (*bnb48types.GetRecordR
 	}
 
 	for _, ele := range lists {
-		ele.InputDecode, _ = utils.InputToBNB48Inscription(ele.Input)
+		ele.InputDecode, _ = utils.InputToBNB48Inscription(ele.Input, ele.Block)
 	}
 
 	return &bnb48types.GetRecordRsp{
