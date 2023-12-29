@@ -55,7 +55,7 @@ func StringToBigint(data string) (*big.Int, error) {
 
 func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscription, error) {
 
-	if len(bn) > 0 && bn[0] >= 48_484_848 /*支持 application/json 的区块高度*/ {
+	if len(bn) > 0 && bn[0] >= 34_778_248 /*支持 application/json 的区块高度*/ {
 		return InputToBNB48Inscription2(str)
 	}
 
