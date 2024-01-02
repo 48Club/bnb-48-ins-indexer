@@ -644,6 +644,10 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscript
 }
 
 func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
+	if block.NumberU64() < 34886548 {
+		return nil
+	}
+
 	inscription.To = "0x000000000000000000000000000000000000dead"
 	return s.transfer(db, block, tx, inscription, index, opIndex, isPending...)
 }
