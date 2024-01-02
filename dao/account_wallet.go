@@ -153,8 +153,8 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 				tx.Or("input like ?", fmt.Sprintf("%%%s%%", v))
 			}
 			return tx
-		}(addresss, db),
-	).Where("`from` = ?", model.Address).Where("delete_at = 0").Where("`tick_hash` = ?", model.TickHash)
+		}(addresss, db).Or("`from` = ?", model.Address),
+	).Where("delete_at = 0").Where("`tick_hash` = ?", model.TickHash)
 	if len(addresss) == 0 {
 		return nil
 	}
