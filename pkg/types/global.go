@@ -20,8 +20,8 @@ type GlobalVariable struct {
 }
 
 type BlockInfo struct {
-	Number    *big.Int
-	Timestamp uint64
+	Number    *big.Int `json:"number"`
+	Timestamp uint64   `json:"timestamp"`
 }
 
 type RecordsModelByTxHash map[string]*dao.AccountRecordsModel
