@@ -15,7 +15,13 @@ type GlobalVariable struct {
 	TxsInBlock    mapset.Set[uint64]
 	TxsByAddr     map[string]map[string]RecordsModelByTxHash
 	BlockAt       *big.Int
+	IndexBloukAt  BlockInfo
 	mu            sync.Mutex
+}
+
+type BlockInfo struct {
+	Number    *big.Int
+	Timestamp uint64
 }
 
 type RecordsModelByTxHash map[string]*dao.AccountRecordsModel

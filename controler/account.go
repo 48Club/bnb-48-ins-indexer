@@ -33,7 +33,7 @@ func (c *AccountController) List(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.accountS.List(req)
+	res, err := c.accountS.List(req, c.pendingTxs.IndexBloukAt)
 	if err != nil {
 		utils.FailResponse(ctx, err.Error())
 		return

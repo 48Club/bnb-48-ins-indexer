@@ -19,7 +19,7 @@ func NewRecordService() *RecordService {
 	}
 }
 
-func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListRecordRsp, error) {
+func (s *RecordService) List(req bnb48types.ListRecordReq, bn bnb48types.BlockInfo) (*bnb48types.ListRecordRsp, error) {
 	db := database.Mysql()
 	var res []*dao.AccountRecordsModel
 	var count int64
@@ -58,12 +58,8 @@ func (s *RecordService) List(req bnb48types.ListRecordReq) (*bnb48types.ListReco
 		res[k] = v
 	}
 	resp := &bnb48types.ListRecordRsp{
-		CommonListRsp: bnb48types.CommonListRsp{
-			Count:    count,
-			Page:     uint64(req.Page),
-			PageSize: uint8(req.PageSize),
-		},
-		List: res,
+		CommonListRsp: bnb48types.BuildResponseInfo(count, req.Page, req.PageSize, bn),
+		List:          res,
 	}
 	return resp, nil
 }
