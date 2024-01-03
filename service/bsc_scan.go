@@ -43,6 +43,7 @@ type inscription struct {
 	Minted   *big.Int
 	Tick     string
 	TickHash string
+	DeployBy string
 }
 
 func NewBscScanService(pendingTxs *types2.GlobalVariable) *BscScanService {
@@ -71,6 +72,7 @@ func (s *BscScanService) init() error {
 		insc.Id = ele.Id
 		insc.Tick = ele.Tick
 		insc.TickHash = ele.TickHash
+		insc.DeployBy = ele.DeployBy
 		if insc.Max, err = utils.StringToBigint(ele.Max); err != nil {
 			return err
 		}
@@ -346,7 +348,73 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 	return nil
 }
 
-func (s *BscScanService) recap() error {
+func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
+	if block.NumberU64() < 9999999999 {
+		return nil
+	}
+
+	insc, ok := s.inscriptions[inscription.TickHash]
+	// not deploy
+	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "not deploy")
+		return nil
+	}
+
+	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	to := strings.ToLower(tx.To().Hex())
+
+	if from != insc.DeployBy {
+		log.Sugar.Debugf("tx: %s, error: %s, deployBy: %s, tx from: %s", tx.Hash().Hex(), "insufficient authority", insc.DeployBy, from)
+		return nil
+	}
+
+	max, err := utils.StringToBigint(inscription.Max)
+	if err != nil || max.Uint64() < 1 {
+		log.Sugar.Debugf("tx: %s, error: %s, max: %s", tx.Hash().Hex(), "max invalid", insc.Max)
+		return nil
+	}
+
+	if max.Cmp(insc.Lim) < 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "max must gte lim", insc.Max, insc.Lim)
+		return nil
+	}
+
+	if new(big.Int).Rem(max, insc.Lim).Uint64() != 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "lim can not divisible by max", insc.Max, insc.Lim)
+		return nil
+	}
+
+	inscUpdate := map[string]interface{}{
+		"max": inscription.Max,
+	}
+	if insc.Minted.Cmp(max) >= 0 {
+		inscUpdate["status"] = 2 // mint end
+	}
+	if err = s.inscriptionDao.Update(db, insc.Id, inscUpdate); err != nil {
+		return err
+	}
+
+	// add record
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: insc.TickHash,
+		From:     from,
+		To:       to,
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     3, // recap
+	}
+	if record.Id, err = dao.GenSnowflakeID(); err != nil {
+		return err
+	}
+
+	if err = s.accountRecords.Create(db, record); err != nil {
+		return err
+	}
+
+	insc.Max = max
 	return nil
 }
 
