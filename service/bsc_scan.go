@@ -241,6 +241,9 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 				return err
 			}
 		case "recap":
+			if err = s.recap(db, block, tx, data, index); err != nil {
+				return err
+			}
 		case "mint":
 			if err = s.mint(db, block, tx, data, index, isPending...); err != nil {
 				return err
@@ -250,7 +253,7 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 				return err
 			}
 		case "burn":
-			if err = s.burn(db, block, tx, data, index, opIndex, isPending...); err != nil {
+			if err = s.burn(db, block, tx, data, index, opIndex); err != nil {
 				return err
 			}
 		case "approve":
@@ -711,13 +714,100 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscript
 	return nil
 }
 
-func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
+func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
 	if block.NumberU64() < 9999999999 {
 		return nil
 	}
 
-	inscription.To = "0x000000000000000000000000000000000000dead"
-	return s.transfer(db, block, tx, inscription, index, opIndex, isPending...)
+	insc, ok := s.inscriptions[inscription.TickHash]
+	// not deploy
+	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s, tick-hash: %s", tx.Hash().Hex(), "not deploy", inscription.TickHash)
+		return nil
+	}
+
+	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	amt, err := utils.StringToBigint(inscription.Amt)
+	if err != nil {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
+		return nil
+	}
+
+	if amt.Cmp(big.NewInt(0)) == 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
+		return nil
+	}
+
+	// sub balance of tx from
+	fromAccount, err := s.account.SelectByAddress(db, from)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "from account not found")
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	accountWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, fromAccount.Id, inscription.TickHash)
+	if err != nil {
+		return err
+	}
+	currentBalance, err := utils.StringToBigint(accountWallet.Balance)
+	if err != nil {
+		return err
+	}
+	if currentBalance.Cmp(amt) < 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, current balance: %s, need balance:%s", tx.Hash().Hex(), "insufficient balance", accountWallet.Balance, inscription.Amt)
+		return nil
+	}
+
+	// add record for tx from
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		OpIndex:  uint64(opIndex),
+		TickHash: inscription.TickHash,
+		BlockAt:  block.Time(),
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     4, // burn
+	}
+
+	balance := new(big.Int).Sub(currentBalance, amt)
+	updates := map[string]interface{}{
+		"balance": balance.String(),
+	}
+	if err = s.accountWallet.UpdateBalance(db, accountWallet.Id, updates); err != nil {
+		return err
+	}
+	if balance.Cmp(common.Big0) == 0 {
+		if err = s.inscriptionDao.UpdateHolders(db, accountWallet.TickHash, -1); err != nil {
+			return err
+		}
+	}
+
+	if record.Id, err = dao.GenSnowflakeID(); err != nil {
+		return err
+	}
+
+	if err = s.accountRecords.Create(db, record); err != nil {
+		return err
+	}
+
+	// update inscription max
+	newMax := new(big.Int).Sub(insc.Max, amt)
+	inscUpdate := map[string]interface{}{
+		"max": newMax,
+	}
+	if err = s.inscriptionDao.Update(db, insc.Id, inscUpdate); err != nil {
+		return err
+	}
+
+	insc.Max = newMax
+	return nil
 }
 
 func (s *BscScanService) approve() error {
