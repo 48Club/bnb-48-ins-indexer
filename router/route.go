@@ -16,7 +16,7 @@ func NewBotRoute(pendingTxs *types.GlobalVariable) *gin.Engine {
 	var (
 		account     = controler.NewAccountController(pendingTxs)
 		record      = controler.NewRecordController(pendingTxs)
-		inscription = controler.NewInscriptionController()
+		inscription = controler.NewInscriptionController(pendingTxs)
 	)
 
 	v1 := bnb48.Group("/v1")

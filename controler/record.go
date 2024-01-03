@@ -44,7 +44,7 @@ func (c *RecordController) List(ctx *gin.Context) {
 			resList = ramTx[int64(req.PageSize)*req.Page:]
 		}
 	}
-	res, err := c.recordS.List(req)
+	res, err := c.recordS.List(req, c.pendingTxs.IndexBloukAt)
 
 	if err != nil {
 		utils.FailResponse(ctx, err.Error())

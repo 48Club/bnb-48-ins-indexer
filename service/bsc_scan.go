@@ -190,7 +190,10 @@ func (s *BscScanService) Scan() error {
 
 		log.Sugar.Infof("currentScanBlock: %d\n", block)
 		block++
-
+		s.pendingTxs.IndexBloukAt = types2.BlockInfo{
+			Number:    targetBN,
+			Timestamp: targetBlock.Time(),
+		}
 		if err = config.SaveBSCConfig(block); err != nil {
 			return err
 		}

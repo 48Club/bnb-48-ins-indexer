@@ -44,7 +44,7 @@ func (s *AccountService) Balance(req bnb48types.AccountBalanceReq) (*bnb48types.
 	return resp, nil
 }
 
-func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.ListAccountWalletRsp, error) {
+func (s *AccountService) List(req bnb48types.ListAccountWalletReq, bn bnb48types.BlockInfo) (*bnb48types.ListAccountWalletRsp, error) {
 	db := database.Mysql()
 	var (
 		res   []*dao.AccountWalletModel
@@ -77,12 +77,8 @@ func (s *AccountService) List(req bnb48types.ListAccountWalletReq) (*bnb48types.
 	}
 
 	resp := &bnb48types.ListAccountWalletRsp{
-		CommonListRsp: bnb48types.CommonListRsp{
-			Count:    count,
-			Page:     uint64(req.Page),
-			PageSize: uint8(req.PageSize),
-		},
-		List: res,
+		CommonListRsp: bnb48types.BuildResponseInfo(count, req.Page, req.PageSize, bn),
+		List:          res,
 	}
 	return resp, nil
 }

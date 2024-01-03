@@ -8,9 +8,19 @@ type CommonListCond struct {
 }
 
 type CommonListRsp struct {
-	Count    int64  `json:"count"`
-	Page     uint64 `json:"page"`
-	PageSize uint8  `json:"page_size"`
+	Count     int64  `json:"count"`
+	Page      uint64 `json:"page"`
+	PageSize  uint8  `json:"page_size"`
+	BlockInfo `json:"block_info"`
+}
+
+func BuildResponseInfo(count, page int64, pageSize int8, bn BlockInfo) CommonListRsp {
+	return CommonListRsp{
+		Count:     count,
+		Page:      uint64(page),
+		PageSize:  uint8(pageSize),
+		BlockInfo: bn,
+	}
 }
 
 type ListAccountWalletReq struct {

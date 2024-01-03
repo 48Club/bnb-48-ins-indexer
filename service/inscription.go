@@ -25,7 +25,7 @@ const (
 	Completed  Status = 2
 )
 
-func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bnb48types.ListInscriptionRsp, error) {
+func (s *InscriptionService) List(req bnb48types.ListInscriptionWalletReq, bn bnb48types.BlockInfo) (*bnb48types.ListInscriptionRsp, error) {
 	db := database.Mysql()
 	var res []*dao.InscriptionModel
 	var count int64
@@ -69,12 +69,8 @@ func (s *InscriptionService) List(req *bnb48types.ListInscriptionWalletReq) (*bn
 		return nil, err
 	}
 	resp := &bnb48types.ListInscriptionRsp{
-		CommonListRsp: bnb48types.CommonListRsp{
-			Count:    count,
-			Page:     uint64(req.Page),
-			PageSize: uint8(req.PageSize),
-		},
-		List: res,
+		CommonListRsp: bnb48types.BuildResponseInfo(count, req.Page, req.PageSize, bn),
+		List:          res,
 	}
 	return resp, nil
 }
