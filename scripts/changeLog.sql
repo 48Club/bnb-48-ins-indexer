@@ -6,3 +6,20 @@ alter table account_records add unique tx_hash_op_index (`tx_hash`,`op_index`);
 -- 2024-01-01
 
 ALTER TABLE `account_records` CHANGE `input` `input` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL;
+
+-- 2023-01-05
+
+CREATE TABLE IF NOT EXISTS `allowance` (
+    `id` bigint unsigned NOT NULL,
+    `tick` varchar(42) NOT NULL DEFAULT '',
+    `tick_hash` varchar(66) NOT NULL DEFAULT '',
+    `owner` varchar(42) NOT NULL DEFAULT '',
+    `spender` varchar(42) NOT NULL DEFAULT '',
+    `amt` varchar(128) NOT NULL DEFAULT '0',
+    `create_at` bigint unsigned NOT NULL DEFAULT '0',
+    `update_at` bigint unsigned NOT NULL DEFAULT '0',
+    `delete_at` bigint unsigned NOT NULL DEFAULT '0',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `owner_spender` (`owner`, `spender`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+

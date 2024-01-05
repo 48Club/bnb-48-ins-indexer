@@ -11,4 +11,6 @@ type BNB48Inscription struct {
 	Lim      string   `json:"lim"`
 	Miners   []string `json:"miners"`
 	Amt      string   `json:"amt"`
+	Spender  string   `json:"spender"`
+	From     string   `json:"from"`
 }

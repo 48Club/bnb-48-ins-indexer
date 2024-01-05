@@ -33,6 +33,7 @@ type BscScanService struct {
 	inscriptions   map[string]*inscription // tick-hash : inscription
 	conf           config.Config
 	pendingTxs     *types2.GlobalVariable
+	allowance      dao.IAllowance
 }
 
 type inscription struct {
@@ -52,6 +53,7 @@ func NewBscScanService(pendingTxs *types2.GlobalVariable) *BscScanService {
 		accountRecords: &dao.AccountRecordsHandler{},
 		accountWallet:  &dao.AccountWalletHandler{},
 		inscriptionDao: &dao.InscriptionHandler{},
+		allowance:      &dao.AllowanceHandler{},
 		inscriptions:   make(map[string]*inscription),
 		conf:           config.GetConfig(),
 		pendingTxs:     pendingTxs,
@@ -810,12 +812,187 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 	return nil
 }
 
-func (s *BscScanService) approve() error {
+func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
+	if block.NumberU64() < 9999999999 {
+		return nil
+	}
+
+	insc, ok := s.inscriptions[inscription.TickHash]
+	// not deploy
+	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s, tick-hash: %s", tx.Hash().Hex(), "not deploy", inscription.TickHash)
+		return nil
+	}
+
+	if !utils.IsValidERCAddress(inscription.Spender) {
+		log.Sugar.Debugf("tx: %s, error: %s, spender: %s", tx.Hash().Hex(), "invalid spender", inscription.Spender)
+		return nil
+	}
+
+	owner := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	amt, err := utils.StringToBigint(inscription.Amt)
+	if err != nil {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
+		return nil
+	}
+
+	if amt.Cmp(big.NewInt(0)) == 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
+		return nil
+	}
+
+	// add record
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		BlockAt:  block.Time(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		TickHash: insc.TickHash,
+		OpIndex:  uint64(opIndex),
+		From:     owner,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     5, // approve
+	}
+	if record.Id, err = dao.GenSnowflakeID(); err != nil {
+		return err
+	}
+
+	if err = s.accountRecords.Create(db, record); err != nil {
+		return err
+	}
+
+	// create or update allowance
+	allowance, err := s.allowance.Select(db, map[string]interface{}{
+		"owner":     owner,
+		"spender":   inscription.Spender,
+		"tick_hash": insc.TickHash,
+	})
+	if err != nil {
+		// create model and return if model not found
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			model := &dao.AllowanceModel{
+				Tick:     insc.Tick,
+				TickHash: insc.TickHash,
+				Owner:    owner,
+				Spender:  inscription.Spender,
+				Amt:      inscription.Amt,
+			}
+			if model.Id, err = dao.GenSnowflakeID(); err != nil {
+				return err
+			}
+			if err = s.allowance.Create(db, model); err != nil {
+				return err
+			}
+
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	updates := map[string]interface{}{
+		"amt": inscription.Amt,
+	}
+	if err = s.allowance.Update(db, allowance.Id, updates); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (s *BscScanService) transferFrom() error {
-	return nil
+func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
+	if block.NumberU64() < 9999999999 {
+		return nil
+	}
+
+	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	insc, ok := s.inscriptions[inscription.TickHash]
+	// not deploy
+	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s, tick-hash: %s", tx.Hash().Hex(), "not deploy", inscription.TickHash)
+		return nil
+	}
+
+	if !utils.IsValidERCAddress(inscription.From) {
+		log.Sugar.Debugf("tx: %s, error: %s, input from: %s", tx.Hash().Hex(), "invalid input from", inscription.From)
+		return nil
+	}
+
+	if !utils.IsValidERCAddress(inscription.To) {
+		log.Sugar.Debugf("tx: %s, error: %s, input to: %s", tx.Hash().Hex(), "invalid input to", inscription.To)
+		return nil
+	}
+
+	amt, err := utils.StringToBigint(inscription.Amt)
+	if err != nil {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
+		return nil
+	}
+
+	if amt.Cmp(big.NewInt(0)) == 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
+		return nil
+	}
+
+	// sub balance of owner
+	ownerAccount, err := s.account.SelectByAddress(db, inscription.From)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "owner account not found")
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	ownerWallet, err := s.accountWallet.SelectByAccountIdTickHash(db, ownerAccount.Id, inscription.TickHash)
+	if err != nil {
+		return err
+	}
+	currentBalance, err := utils.StringToBigint(ownerWallet.Balance)
+	if err != nil {
+		return err
+	}
+	if currentBalance.Cmp(amt) < 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, current balance: %s, need balance:%s", tx.Hash().Hex(), "insufficient balance", ownerWallet.Balance, inscription.Amt)
+		return nil
+	}
+
+	balance := new(big.Int).Sub(currentBalance, amt)
+	updates := map[string]interface{}{
+		"balance": balance.String(),
+	}
+	if err = s.accountWallet.UpdateBalance(db, ownerAccount.Id, updates); err != nil {
+		return err
+	}
+	if balance.Cmp(common.Big0) == 0 {
+		if err = s.inscriptionDao.UpdateHolders(db, ownerWallet.TickHash, -1); err != nil {
+			return err
+		}
+	}
+
+	// add record for tx from
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		OpIndex:  uint64(opIndex),
+		TickHash: inscription.TickHash,
+		BlockAt:  block.Time(),
+		From:     from,
+		To:       strings.ToLower(tx.To().Hex()),
+		Input:    hexutil.Encode(tx.Data()),
+		Type:     6, // transferFrom
+	}
+	if record.Id, err = dao.GenSnowflakeID(); err != nil {
+		return err
+	}
+	if err = s.accountRecords.Create(db, record); err != nil {
+		return err
+	}
+
+	return s.transferForTo(db, amt, insc, inscription.To)
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
