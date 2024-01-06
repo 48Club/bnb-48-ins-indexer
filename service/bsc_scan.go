@@ -47,7 +47,10 @@ type inscription struct {
 	DeployBy string
 }
 
+var allowRamUpdate = mapset.NewSet[string]()
+
 func NewBscScanService(pendingTxs *types2.GlobalVariable) *BscScanService {
+	allowRamUpdate.Append("transferFrom", "transfer")
 	return &BscScanService{
 		account:        &dao.AccountHandler{},
 		accountRecords: &dao.AccountRecordsHandler{},
@@ -236,7 +239,7 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 		if data.P != "bnb-48" {
 			return nil
 		}
-		if len(isPending) > 0 && isPending[0] && data.Op != "transfer" {
+		if len(isPending) > 0 && isPending[0] && !allowRamUpdate.ContainsOne(data.Op) {
 			continue
 		}
 
@@ -266,7 +269,7 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 				return err
 			}
 		case "transferFrom":
-			if err = s.transferFrom(db, block, tx, data, index, opIndex); err != nil {
+			if err = s.transferFrom(db, block, tx, data, index, opIndex, isPending...); err != nil {
 				return err
 			}
 		default:
@@ -412,7 +415,7 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 		From:     from,
 		To:       to,
 		Input:    hexutil.Encode(tx.Data()),
-		Type:     3, // recap
+		Type:     helper.InscriptionStatusRecap,
 	}
 
 	if err = s.accountRecords.Create(db, record); err != nil {
@@ -518,7 +521,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		From:     from,
 		To:       to,
 		Input:    hexutil.Encode(tx.Data()),
-		Type:     1, // mint
+		Type:     helper.InscriptionStatusMint,
 	}
 
 	if err = s.accountRecords.Create(db, record); err != nil {
@@ -619,7 +622,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 		From:     from,
 		To:       strings.ToLower(tx.To().Hex()),
 		Input:    hexutil.Encode(tx.Data()),
-		Type:     2, // transfer
+		Type:     helper.InscriptionStatusTransfer,
 	}
 
 	if len(isPending) > 0 && isPending[0] {
@@ -747,7 +750,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 		From:     from,
 		To:       strings.ToLower(tx.To().Hex()),
 		Input:    hexutil.Encode(tx.Data()),
-		Type:     4, // burn
+		Type:     helper.InscriptionStatusBurn,
 	}
 
 	balance := common.Big0
@@ -823,7 +826,7 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 		From:     owner,
 		To:       strings.ToLower(tx.To().Hex()),
 		Input:    hexutil.Encode(tx.Data()),
-		Type:     5, // approve
+		Type:     helper.InscriptionStatusApprove,
 	}
 
 	if err = s.accountRecords.Create(db, record); err != nil {
@@ -840,7 +843,7 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 	})
 }
 
-func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
+func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
 	if block.NumberU64() < 9999999999 {
 		return nil
 	}
@@ -918,8 +921,13 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		From:     from,
 		To:       strings.ToLower(tx.To().Hex()),
 		Input:    hexutil.Encode(tx.Data()),
-		Type:     6, // transferFrom
+		Type:     helper.InscriptionStatusTransferFrom,
 	}
+
+	if len(isPending) > 0 && isPending[0] {
+		s.updateRam(record, block)
+	}
+
 	if err = s.accountRecords.Create(db, record); err != nil {
 		return err
 	}
@@ -928,6 +936,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
+	// todo: 添加 opIndex 判断
 	s.pendingTxs.Lock()
 	defer s.pendingTxs.Unlock()
 
