@@ -58,46 +58,26 @@ func (h *AccountRecordsHandler) Create(db *gorm.DB, model *AccountRecordsModel) 
 }
 
 func (h *AccountRecordsHandler) Find(db *gorm.DB) ([]*AccountRecordsModel, error) {
-	var (
-		datas []*AccountRecordsModel
-		err   error
-	)
+	var datas []*AccountRecordsModel
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Find(&datas)
 
-	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
-		return nil, err
-	}
-
-	return datas, nil
+	return datas, tx.Error
 }
 
 func (h *AccountRecordsHandler) Count(db *gorm.DB) (int64, error) {
-	var (
-		res int64
-		err error
-	)
+	var res int64
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Count(&res)
 
-	if err = db.Table(h.TableName()).Count(&res).Error; err != nil {
-		return 0, err
-	}
-
-	return res, nil
+	return res, tx.Error
 }
 
 func (h *AccountRecordsHandler) FindByTxHash(db *gorm.DB, txHash string) ([]*AccountRecordsModel, error) {
-	var (
-		datas []*AccountRecordsModel
-		err   error
-	)
+	var datas []*AccountRecordsModel
 
 	db = db.Where("delete_at = 0")
 
-	if err = db.Table(h.TableName()).Where("tx_hash = ?", txHash).Order("op_index desc").Find(&datas).Error; err != nil {
-		return nil, err
-	}
-
-	return datas, nil
+	tx := db.Table(h.TableName()).Where("tx_hash = ?", txHash).Order("op_index desc").Find(&datas)
+	return datas, tx.Error
 }

@@ -11,7 +11,8 @@ import (
 type IAccountWallet interface {
 	TableName() string
 	Create(db *gorm.DB, model *AccountWalletModel) error
-	UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error
+	UpdateBalanceByID(db *gorm.DB, id uint64, data map[string]interface{}) error
+	UpdateBalanceByAddressTickHash(db *gorm.DB, address, tickHash string, data map[string]interface{}) error
 	SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error)
 	SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error)
 	SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error)
@@ -42,46 +43,27 @@ func (h *AccountWalletHandler) TableName() string {
 }
 
 func (h *AccountWalletHandler) Count(db *gorm.DB) (int64, error) {
-	var (
-		res int64
-		err error
-	)
+	var res int64
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Count(&res)
 
-	if err = db.Table(h.TableName()).Count(&res).Error; err != nil {
-		return 0, err
-	}
-
-	return res, nil
+	return res, tx.Error
 }
 
 func (h *AccountWalletHandler) Find(db *gorm.DB) ([]*AccountWalletModel, error) {
-	var (
-		datas []*AccountWalletModel
-		err   error
-	)
+	var datas []*AccountWalletModel
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Find(&datas)
 
-	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
-		return nil, err
-	}
-
-	return datas, nil
+	return datas, tx.Error
 }
 
 func (h *AccountWalletHandler) SelectByAccountIdTickHash(db *gorm.DB, accountId uint64, tickHash string) (*AccountWalletModel, error) {
-	var (
-		model AccountWalletModel
-		err   error
-	)
+	var model AccountWalletModel
 
-	if err = db.Table(h.TableName()).Where("account_id = ? and tick_hash = ?", accountId, tickHash).First(&model).Error; err != nil {
-		return nil, err
-	}
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Where("account_id = ? and tick_hash = ?", accountId, tickHash).First(&model)
 
-	return &model, nil
+	return &model, tx.Error
 }
 
 func (h *AccountWalletHandler) ORMSelectColumn() []string {
@@ -89,28 +71,18 @@ func (h *AccountWalletHandler) ORMSelectColumn() []string {
 }
 
 func (h *AccountWalletHandler) SelectByAddressTickHash(db *gorm.DB, address string, tickHash []string) ([]*AccountWalletModel, error) {
-	var (
-		model []*AccountWalletModel
-		err   error
-	)
+	var model []*AccountWalletModel
 
-	if err = db.Table("`inscription`").Joins("LEFT JOIN `account_wallet` ON `account_wallet`.`tick_hash` = `inscription`.`tick_hash` AND `account_wallet`.`address` = ?", address).Where("`inscription`.`tick_hash` in ?", tickHash).Select(h.ORMSelectColumn()).Find(&model).Error; err != nil {
-		return nil, err
-	}
+	tx := db.Table("`inscription`").Joins("LEFT JOIN `account_wallet` ON `account_wallet`.`tick_hash` = `inscription`.`tick_hash` AND `account_wallet`.`address` = ?", address).Where("`inscription`.`tick_hash` in ?", tickHash).Select(h.ORMSelectColumn()).Find(&model)
 
-	return model, nil
+	return model, tx.Error
 }
 func (h *AccountWalletHandler) SelectByAddress(db *gorm.DB, address string) ([]*AccountWalletModel, error) {
-	var (
-		model []*AccountWalletModel
-		err   error
-	)
+	var model []*AccountWalletModel
 
-	if err = db.Table("`account_wallet`").Joins("RIGHT JOIN `inscription` ON `inscription`.`tick_hash` = `account_wallet`.`tick_hash`").Where("`account_wallet`.`address` = ?", address).Select(h.ORMSelectColumn()).Find(&model).Error; err != nil {
-		return nil, err
-	}
+	tx := db.Table("`account_wallet`").Joins("RIGHT JOIN `inscription` ON `inscription`.`tick_hash` = `account_wallet`.`tick_hash`").Where("`account_wallet`.`address` = ?", address).Select(h.ORMSelectColumn()).Find(&model)
 
-	return model, nil
+	return model, tx.Error
 }
 
 func (h *AccountWalletHandler) Create(db *gorm.DB, model *AccountWalletModel) error {
@@ -129,15 +101,15 @@ func (h *AccountWalletHandler) Create(db *gorm.DB, model *AccountWalletModel) er
 	return db.Table(h.TableName()).Create(model).Error
 }
 
-func (h *AccountWalletHandler) UpdateBalance(db *gorm.DB, id uint64, data map[string]interface{}) error {
-	var err error
-
+func (h *AccountWalletHandler) UpdateBalanceByID(db *gorm.DB, id uint64, data map[string]interface{}) error {
 	data["update_at"] = time.Now().Unix()
-	if err = db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error; err != nil {
-		return err
-	}
 
-	return nil
+	return db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error
+}
+func (h *AccountWalletHandler) UpdateBalanceByAddressTickHash(db *gorm.DB, address, tickHash string, data map[string]interface{}) error {
+	data["update_at"] = time.Now().Unix()
+
+	return db.Table(h.TableName()).Where("address = ? and tick_hash = ?", address, tickHash).UpdateColumns(data).Error
 }
 
 func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletModel, relimit int) error {

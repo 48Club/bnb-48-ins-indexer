@@ -44,14 +44,9 @@ func (h *AccountHandler) Create(db *gorm.DB, model *AccountModel) error {
 }
 
 func (h *AccountHandler) SelectByAddress(db *gorm.DB, address string) (*AccountModel, error) {
-	var (
-		model AccountModel
-		err   error
-	)
+	var model AccountModel
 
-	if err = db.Table(h.TableName()).Where("address = ?", address).First(&model).Error; err != nil {
-		return nil, err
-	}
+	tx := db.Table(h.TableName()).Where("address = ?", address).First(&model)
 
-	return &model, nil
+	return &model, tx.Error
 }

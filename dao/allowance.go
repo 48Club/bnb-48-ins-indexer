@@ -1,8 +1,10 @@
 package dao
 
 import (
-	"gorm.io/gorm"
+	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type IAllowance interface {
@@ -10,6 +12,7 @@ type IAllowance interface {
 	Create(db *gorm.DB, model *AllowanceModel) error
 	Select(db *gorm.DB, filter map[string]interface{}) (*AllowanceModel, error)
 	Update(db *gorm.DB, id uint64, data map[string]interface{}) error
+	CreateOrUpdate(db *gorm.DB, model *AllowanceModel) error
 }
 
 type AllowanceModel struct {
@@ -48,39 +51,32 @@ func (h *AllowanceHandler) Create(db *gorm.DB, model *AllowanceModel) error {
 }
 
 func (h *AllowanceHandler) Select(db *gorm.DB, filter map[string]interface{}) (*AllowanceModel, error) {
-	var (
-		model AllowanceModel
-		err   error
-	)
+	var model AllowanceModel
 
 	db = db.Where("delete_at = 0")
 
-	if filter["owner"] != nil {
-		db = db.Where("owner = ?", filter["owner"])
+	for k, v := range filter {
+		if v == nil || v == "" {
+			continue
+		}
+		db = db.Where(fmt.Sprintf("%s = ?", k), v)
 	}
 
-	if filter["spender"] != nil {
-		db = db.Where("spender = ?", filter["spender"])
-	}
-
-	if filter["tick_hash"] != nil {
-		db = db.Where("tick_hash = ?", filter["tick_hash"])
-	}
-
-	if err = db.Table(h.TableName()).Select(&model).Error; err != nil {
-		return nil, err
-	}
-
-	return &model, nil
+	tx := db.Table(h.TableName()).Select(&model)
+	return &model, tx.Error
 }
 
 func (h *AllowanceHandler) Update(db *gorm.DB, id uint64, data map[string]interface{}) error {
-	var err error
 
 	data["update_at"] = time.Now().Unix()
-	if err = db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error; err != nil {
-		return err
-	}
 
-	return nil
+	return db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error
+}
+
+func (h *AllowanceHandler) CreateOrUpdate(db *gorm.DB, model *AllowanceModel) error {
+	tx := db.Table(h.TableName()).Where("owner = ? AND spender = ? AND tick_hash = ?", model.Owner, model.Spender, model.TickHash).Update("amt", model.Amt)
+	if tx.RowsAffected == 1 {
+		return nil
+	}
+	return h.Create(db, model)
 }

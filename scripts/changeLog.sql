@@ -20,6 +20,6 @@ CREATE TABLE IF NOT EXISTS `allowance` (
     `update_at` bigint unsigned NOT NULL DEFAULT '0',
     `delete_at` bigint unsigned NOT NULL DEFAULT '0',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `owner_spender` (`owner`, `spender`)
+    UNIQUE KEY `owner_spender_tk` (`owner`, `spender`, `tick_hash`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 

@@ -80,8 +80,8 @@ func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscripti
 		}
 
 		obj.To = strings.ToLower(obj.To)
-		obj.From = strings.ToLower(obj.From)
-		obj.Spender = strings.ToLower(obj.Spender)
+		// obj.From = strings.ToLower(obj.From)
+		// obj.Spender = strings.ToLower(obj.Spender)
 		if len(obj.Miners) > 0 {
 			obj.Miners = strings.Split(strings.ToLower(strings.Join(obj.Miners, ",")), ",")
 		}
