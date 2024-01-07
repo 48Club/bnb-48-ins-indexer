@@ -10,6 +10,7 @@ import (
 	"bnb-48-ins-indexer/pkg/utils"
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -845,6 +846,7 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 		Owner:    owner,
 		Spender:  inscription.Spender,
 		Amt:      inscription.Amt,
+		Position: fmt.Sprintf("%d_%d_%d", block.NumberU64(), index, opIndex),
 	})
 }
 
