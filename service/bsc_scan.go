@@ -884,28 +884,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return nil
 	}
 
-	// check and update allowance
-	allowance, err := s.allowance.Select(db, map[string]interface{}{
-		"tick_hash": insc.TickHash,
-		"owner":     inscription.From,
-		"spender":   from,
-	})
-	if err != nil {
-		return utils.Error(err, gorm.ErrRecordNotFound, tx.Hash().Hex(), "allowance not found")
-	}
-	allowanceAmt := utils.MustStringToBigint(allowance.Amt)
-	if amt.Cmp(allowanceAmt) > 0 {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s, allowance amt: %s", tx.Hash().Hex(), "insufficient amt", inscription.Amt, allowance.Amt)
-		return nil
-	}
-	allowanceUpdates := map[string]interface{}{
-		"amt": new(big.Int).Sub(allowanceAmt, amt).String(),
-	}
-	if err = s.allowance.Update(db, allowance.Id, allowanceUpdates); err != nil {
-		return err
-	}
-
-	// sub balance of owner
+	// check balance of owner
 	ownerWallets, err := s.accountWallet.SelectByAddressTickHash(db, inscription.From, []string{inscription.TickHash})
 	if err != nil {
 		return err
@@ -926,6 +905,30 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return nil
 	}
 
+	// check and allowance
+	allowance, err := s.allowance.Select(db, map[string]interface{}{
+		"tick_hash": insc.TickHash,
+		"owner":     inscription.From,
+		"spender":   from,
+	})
+	if err != nil {
+		return utils.Error(err, gorm.ErrRecordNotFound, tx.Hash().Hex(), "allowance not found")
+	}
+	allowanceAmt := utils.MustStringToBigint(allowance.Amt)
+	if amt.Cmp(allowanceAmt) > 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s, allowance amt: %s", tx.Hash().Hex(), "insufficient amt", inscription.Amt, allowance.Amt)
+		return nil
+	}
+
+	// update allowance of owner
+	allowanceUpdates := map[string]interface{}{
+		"amt": new(big.Int).Sub(allowanceAmt, amt).String(),
+	}
+	if err = s.allowance.Update(db, allowance.Id, allowanceUpdates); err != nil {
+		return err
+	}
+
+	// update balance of owner
 	balance := common.Big0
 	if currentBalanceCmp == 1 {
 		balance = new(big.Int).Sub(currentBalance, amt)
