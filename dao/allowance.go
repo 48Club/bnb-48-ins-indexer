@@ -22,6 +22,7 @@ type AllowanceModel struct {
 	Owner    string `json:"owner"`
 	Spender  string `json:"spender"`
 	Amt      string `json:"amt"`
+	Position string `json:"position"`
 	CreateAt int64  `json:"create_at"`
 	UpdateAt int64  `json:"update_at"`
 	DeleteAt int64  `json:"delete_at"`
@@ -74,7 +75,11 @@ func (h *AllowanceHandler) Update(db *gorm.DB, id uint64, data map[string]interf
 }
 
 func (h *AllowanceHandler) CreateOrUpdate(db *gorm.DB, model *AllowanceModel) error {
-	tx := db.Table(h.TableName()).Where("owner = ? AND spender = ? AND tick_hash = ?", model.Owner, model.Spender, model.TickHash).Update("amt", model.Amt)
+	updates := map[string]interface{}{
+		"amt":       model.Amt,
+		"update_at": time.Now().Unix(),
+	}
+	tx := db.Table(h.TableName()).Where("owner = ? AND spender = ? AND tick_hash = ?", model.Owner, model.Spender, model.TickHash).Updates(updates)
 	if tx.RowsAffected == 1 {
 		return nil
 	}

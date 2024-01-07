@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS `allowance` (
     `owner` varchar(42) NOT NULL DEFAULT '',
     `spender` varchar(42) NOT NULL DEFAULT '',
     `amt` varchar(128) NOT NULL DEFAULT '0',
+    `position` varchar(42) NOT NULL DEFAULT '',
     `create_at` bigint unsigned NOT NULL DEFAULT '0',
     `update_at` bigint unsigned NOT NULL DEFAULT '0',
     `delete_at` bigint unsigned NOT NULL DEFAULT '0',
