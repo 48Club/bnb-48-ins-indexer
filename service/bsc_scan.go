@@ -781,7 +781,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 	// update inscription max
 	newMax := new(big.Int).Sub(insc.Max, amt)
 	inscUpdate := map[string]interface{}{
-		"max": newMax,
+		"max": newMax.String(),
 	}
 	if err = s.inscriptionDao.Update(db, insc.Id, inscUpdate); err != nil {
 		return err
