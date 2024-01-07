@@ -879,7 +879,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return nil
 	}
 
-	if amt.Cmp(big.NewInt(0)) == 0 {
+	if amt.Cmp(big.NewInt(0)) <= 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
 		return nil
 	}
@@ -915,7 +915,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return utils.Error(err, gorm.ErrRecordNotFound, tx.Hash().Hex(), "allowance not found")
 	}
 	allowanceAmt := utils.MustStringToBigint(allowance.Amt)
-	if amt.Cmp(allowanceAmt) > 0 {
+	if allowanceAmt.Cmp(amt) > 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s, allowance amt: %s", tx.Hash().Hex(), "insufficient amt", inscription.Amt, allowance.Amt)
 		return nil
 	}
