@@ -2,8 +2,10 @@ package utils
 
 import (
 	"bnb-48-ins-indexer/pkg/helper"
+	"bnb-48-ins-indexer/pkg/log"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"regexp"
@@ -34,6 +36,24 @@ func GetTxFrom(tx *types.Transaction) common.Address {
 	}
 
 	return from
+}
+
+func Error(err, ignoreErr error, tx, mgs string) error {
+	if errors.Is(err, ignoreErr) {
+		log.Sugar.Debugf("tx: %s, error: %s", tx, mgs)
+		return nil
+	}
+
+	return err
+}
+
+func MustStringToBigint(data string) *big.Int {
+	res, err := StringToBigint(data)
+	if err != nil {
+		panic(err)
+	}
+
+	return res
 }
 
 func StringToBigint(data string) (*big.Int, error) {

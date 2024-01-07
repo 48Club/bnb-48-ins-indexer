@@ -169,14 +169,14 @@ func (s *BscScanService) Scan() error {
 	for {
 
 		targetBN := new(big.Int).SetUint64(block)
-		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
-		if err == nil && time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
-			go s.checkPendingTxs(targetBlockHeader)
-		}
-		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
-			time.Sleep(time.Second)
-			continue
-		}
+		//targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
+		//if err == nil && time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
+		//	go s.checkPendingTxs(targetBlockHeader)
+		//}
+		//if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
+		//	time.Sleep(time.Second)
+		//	continue
+		//}
 
 		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), targetBN)
 
@@ -360,7 +360,7 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 }
 
 func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
-	if block.NumberU64() < 9999999999 {
+	if block.NumberU64() < 1 {
 		return nil
 	}
 
@@ -698,7 +698,7 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscript
 }
 
 func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
-	if block.NumberU64() < 9999999999 {
+	if block.NumberU64() < 1 {
 		return nil
 	}
 
@@ -787,7 +787,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 }
 
 func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
-	if block.NumberU64() < 9999999999 {
+	if block.NumberU64() < 1 {
 		return nil
 	}
 
@@ -844,7 +844,7 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 }
 
 func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
-	if block.NumberU64() < 9999999999 {
+	if block.NumberU64() < 1 {
 		return nil
 	}
 
@@ -877,8 +877,29 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return nil
 	}
 
+	// check and update allowance
+	allowance, err := s.allowance.Select(db, map[string]interface{}{
+		"tick_hash": insc.TickHash,
+		"owner":     inscription.From,
+		"spender":   from,
+	})
+	if err != nil {
+		return utils.Error(err, gorm.ErrRecordNotFound, tx.Hash().Hex(), "allowance not found")
+	}
+	allowanceAmt := utils.MustStringToBigint(allowance.Amt)
+	if amt.Cmp(allowanceAmt) > 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s, allowance amt: %s", tx.Hash().Hex(), "insufficient amt", inscription.Amt, allowance.Amt)
+		return nil
+	}
+	allowanceUpdates := map[string]interface{}{
+		"amt": new(big.Int).Sub(allowanceAmt, amt).String(),
+	}
+	if err = s.allowance.Update(db, allowance.Id, allowanceUpdates); err != nil {
+		return err
+	}
+
 	// sub balance of owner
-	ownerWallets, _ := s.accountWallet.SelectByAddressTickHash(db, from, []string{inscription.TickHash})
+	ownerWallets, _ := s.accountWallet.SelectByAddressTickHash(db, inscription.From, []string{inscription.TickHash})
 	if len(ownerWallets) == 0 {
 		return nil
 	}
