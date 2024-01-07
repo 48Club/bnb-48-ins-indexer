@@ -63,7 +63,7 @@ func (h *AllowanceHandler) Select(db *gorm.DB, filter map[string]interface{}) (*
 		db = db.Where(fmt.Sprintf("%s = ?", k), v)
 	}
 
-	tx := db.Table(h.TableName()).Select(&model)
+	tx := db.Table(h.TableName()).First(&model)
 	return &model, tx.Error
 }
 
