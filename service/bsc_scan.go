@@ -385,6 +385,11 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 		return nil
 	}
 
+	if max.Cmp(insc.Max) > 0 {
+		log.Sugar.Debugf("tx: %s, error: %s, max: %s", tx.Hash().Hex(), "new target max", insc.Max)
+		return nil
+	}
+
 	if max.Cmp(insc.Lim) < 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "max must gte lim", insc.Max, insc.Lim)
 		return nil
