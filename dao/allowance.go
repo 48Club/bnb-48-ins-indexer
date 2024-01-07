@@ -77,6 +77,7 @@ func (h *AllowanceHandler) Update(db *gorm.DB, id uint64, data map[string]interf
 func (h *AllowanceHandler) CreateOrUpdate(db *gorm.DB, model *AllowanceModel) error {
 	updates := map[string]interface{}{
 		"amt":       model.Amt,
+		"position":  model.Position,
 		"update_at": time.Now().Unix(),
 	}
 	tx := db.Table(h.TableName()).Where("owner = ? AND spender = ? AND tick_hash = ?", model.Owner, model.Spender, model.TickHash).Updates(updates)
