@@ -373,7 +373,6 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 	}
 
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
-	to := strings.ToLower(tx.To().Hex())
 
 	if from != insc.DeployBy {
 		log.Sugar.Debugf("tx: %s, error: %s, deployBy: %s, tx from: %s", tx.Hash().Hex(), "insufficient authority", insc.DeployBy, from)
@@ -412,19 +411,7 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 	}
 
 	// add record
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		BlockAt:  block.Time(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		TickHash: insc.TickHash,
-		From:     from,
-		To:       to,
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     helper.InscriptionStatusRecap,
-	}
-
-	if err = s.accountRecords.Create(db, record); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, 0, from, helper.InscriptionStatusRecap); err != nil {
 		return err
 	}
 
@@ -518,19 +505,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	// add record
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		BlockAt:  block.Time(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		TickHash: insc.TickHash,
-		From:     from,
-		To:       to,
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     helper.InscriptionStatusMint,
-	}
-
-	if err = s.accountRecords.Create(db, record); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, 0, from, helper.InscriptionStatusMint); err != nil {
 		return err
 	}
 
@@ -618,23 +593,6 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	}
 
 	// add record for tx from
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		OpIndex:  uint64(opIndex),
-		TickHash: inscription.TickHash,
-		BlockAt:  block.Time(),
-		From:     from,
-		To:       strings.ToLower(tx.To().Hex()),
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     helper.InscriptionStatusTransfer,
-	}
-
-	if len(isPending) > 0 && isPending[0] {
-		s.updateRam(record, block)
-	}
-
 	balance := new(big.Int).Sub(currentBalance, amt)
 	updates := map[string]interface{}{
 		"balance": balance.String(),
@@ -647,8 +605,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 			return nil, err
 		}
 	}
-
-	if err = s.accountRecords.Create(db, record); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransfer, isPending...); err != nil {
 		return nil, err
 	}
 
@@ -746,19 +703,6 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	// add record for tx from
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		OpIndex:  uint64(opIndex),
-		TickHash: inscription.TickHash,
-		BlockAt:  block.Time(),
-		From:     from,
-		To:       strings.ToLower(tx.To().Hex()),
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     helper.InscriptionStatusBurn,
-	}
-
 	balance := common.Big0
 	if balanceCmp == 1 {
 		balance = new(big.Int).Sub(currentBalance, amt)
@@ -775,7 +719,8 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 		}
 	}
 
-	if err = s.accountRecords.Create(db, record); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusBurn); err != nil {
+
 		return err
 	}
 
@@ -822,20 +767,7 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 	}
 
 	// add record
-	record := &dao.AccountRecordsModel{
-		Block:    block.NumberU64(),
-		BlockAt:  block.Time(),
-		TxHash:   tx.Hash().Hex(),
-		TxIndex:  uint64(index),
-		TickHash: insc.TickHash,
-		OpIndex:  uint64(opIndex),
-		From:     owner,
-		To:       strings.ToLower(tx.To().Hex()),
-		Input:    hexutil.Encode(tx.Data()),
-		Type:     helper.InscriptionStatusApprove,
-	}
-
-	if err = s.accountRecords.Create(db, record); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, owner, helper.InscriptionStatusApprove); err != nil {
 		return err
 	}
 
@@ -879,9 +811,11 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return nil
 	}
 
-	if amt.Cmp(big.NewInt(0)) <= 0 {
+	if tmpCmp := amt.Cmp(big.NewInt(0)); tmpCmp == -1 {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
 		return nil
+	} else if tmpCmp == 0 {
+		return s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransferFrom, isPending...)
 	}
 
 	// check balance of owner
@@ -915,7 +849,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return utils.Error(err, gorm.ErrRecordNotFound, tx.Hash().Hex(), "allowance not found")
 	}
 	allowanceAmt := utils.MustStringToBigint(allowance.Amt)
-	if allowanceAmt.Cmp(amt) > 0 {
+	if allowanceAmt.Cmp(amt) == -1 {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s, allowance amt: %s", tx.Hash().Hex(), "insufficient amt", inscription.Amt, allowance.Amt)
 		return nil
 	}
@@ -946,6 +880,15 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 	}
 
 	// add record for tx from
+
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransferFrom, isPending...); err != nil {
+		return err
+	}
+
+	return s.transferForTo(db, amt, insc, inscription.To)
+}
+
+func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block *types.Block, inscription *helper.BNB48Inscription, index, opIndex int, from string, txType helper.AccountRecordsType, isPending ...bool) error {
 	record := &dao.AccountRecordsModel{
 		Block:    block.NumberU64(),
 		TxHash:   tx.Hash().Hex(),
@@ -956,18 +899,12 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		From:     from,
 		To:       strings.ToLower(tx.To().Hex()),
 		Input:    hexutil.Encode(tx.Data()),
-		Type:     helper.InscriptionStatusTransferFrom,
+		Type:     txType,
 	}
-
 	if len(isPending) > 0 && isPending[0] {
 		s.updateRam(record, block)
 	}
-
-	if err = s.accountRecords.Create(db, record); err != nil {
-		return err
-	}
-
-	return s.transferForTo(db, amt, insc, inscription.To)
+	return s.accountRecords.Create(db, record)
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
