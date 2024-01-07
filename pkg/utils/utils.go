@@ -178,6 +178,14 @@ func verifyInscription(ins *helper.BNB48Inscription) bool {
 		return false
 	}
 
+	if len(ins.From) > 42 {
+		return false
+	}
+
+	if len(ins.Spender) > 42 {
+		return false
+	}
+
 	miners := strings.Join(ins.Miners, ",")
 	if len(miners) > 2048 {
 		return false
