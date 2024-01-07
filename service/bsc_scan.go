@@ -170,14 +170,14 @@ func (s *BscScanService) Scan() error {
 	for {
 
 		targetBN := new(big.Int).SetUint64(block)
-		//targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
-		//if err == nil && time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
-		//	go s.checkPendingTxs(targetBlockHeader)
-		//}
-		//if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
-		//	time.Sleep(time.Second)
-		//	continue
-		//}
+		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
+		if err == nil && time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
+			go s.checkPendingTxs(targetBlockHeader)
+		}
+		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
+			time.Sleep(time.Second)
+			continue
+		}
 
 		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), targetBN)
 
@@ -727,7 +727,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 		return nil
 	}
 
-	// sub balance of tx from
+	// check balance of tx from
 	accountWallets, _ := s.accountWallet.SelectByAddressTickHash(db, from, []string{inscription.TickHash})
 	if len(accountWallets) == 0 {
 		return nil
