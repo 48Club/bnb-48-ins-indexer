@@ -904,10 +904,14 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 	}
 
 	// sub balance of owner
-	ownerWallets, _ := s.accountWallet.SelectByAddressTickHash(db, inscription.From, []string{inscription.TickHash})
+	ownerWallets, err := s.accountWallet.SelectByAddressTickHash(db, inscription.From, []string{inscription.TickHash})
+	if err != nil {
+		return err
+	}
 	if len(ownerWallets) == 0 {
 		return nil
 	}
+
 	ownerWallet := ownerWallets[0]
 
 	currentBalance, err := utils.StringToBigint(ownerWallet.Balance)
