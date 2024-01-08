@@ -3,6 +3,10 @@ bnb48_index:
   port: 8888
   route_prefix: /bnb48_index
   bsc_rpc: /opt/.ethereum/geth.ipc
+  bulk_cannot_contain:
+    - deploy
+    - recap
+    - mint
 
 log:
   dir: /48club/logs

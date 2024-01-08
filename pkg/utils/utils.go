@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bnb-48-ins-indexer/config"
 	"bnb-48-ins-indexer/pkg/helper"
 	"bnb-48-ins-indexer/pkg/log"
 	"encoding/hex"
@@ -19,12 +20,17 @@ import (
 )
 
 var (
-	bscChainID   = big.NewInt(56)
-	londonSigner = types.NewLondonSigner(bscChainID)
-	eIP155Signer = types.NewEIP155Signer(bscChainID)
-	dataRe, _    = regexp.Compile("data:([^\"]*),(.*)")
-	maxU256      = abi.MaxUint256
+	bscChainID        = big.NewInt(56)
+	londonSigner      = types.NewLondonSigner(bscChainID)
+	eIP155Signer      = types.NewEIP155Signer(bscChainID)
+	dataRe, _         = regexp.Compile("data:([^\"]*),(.*)")
+	maxU256           = abi.MaxUint256
+	bulkCannotContain = mapset.NewSet[string]()
 )
+
+func init() {
+	bulkCannotContain.Append(config.GetConfig().App.BulkCannotContain...)
+}
 
 func GetTxFrom(tx *types.Transaction) common.Address {
 	var from common.Address
@@ -90,8 +96,7 @@ func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscripti
 		utfStr = utfStr[6:]
 
 		obj := &helper.BNB48Inscription{}
-		err := json.Unmarshal([]byte(utfStr), obj)
-		if err != nil {
+		if err := json.Unmarshal([]byte(utfStr), obj); err != nil {
 			return nil, err
 		}
 
@@ -124,7 +129,9 @@ func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, e
 
 	s := rs[2]
 	var tmp interface{}
-	_ = json.Unmarshal([]byte(s), &tmp)
+	if err := json.Unmarshal([]byte(s), &tmp); err != nil {
+		return nil, err
+	}
 
 	switch tmp.(type) {
 	case map[string]interface{}:
@@ -139,8 +146,6 @@ func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, e
 		}
 	}
 	mustCheckOP := len(inss) > 1
-	ops := mapset.NewSet[string]()
-	ops.Append("deploy", "recap", "mint")
 
 	for k, ins := range inss {
 		if ok := verifyInscription(ins); !ok {
@@ -153,7 +158,7 @@ func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, e
 			inss[k].Miners = strings.Split(strings.ToLower(strings.Join(ins.Miners, ",")), ",")
 		}
 
-		if mustCheckOP && ops.ContainsOne(ins.Op) {
+		if mustCheckOP && bulkCannotContain.ContainsOne(ins.Op) {
 			return nil, nil
 		}
 	}
