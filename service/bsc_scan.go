@@ -26,6 +26,10 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	FutureEnableBNForPR61 = uint64(35_084_848) // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/61
+)
+
 type BscScanService struct {
 	account        dao.IAccount
 	accountRecords dao.IAccountRecords
@@ -361,7 +365,7 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 }
 
 func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
-	if block.NumberU64() < 1 {
+	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
 
@@ -661,7 +665,7 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscript
 }
 
 func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
-	if block.NumberU64() < 1 {
+	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
 
@@ -738,7 +742,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 }
 
 func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
-	if block.NumberU64() < 1 {
+	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
 
@@ -783,7 +787,7 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 }
 
 func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
-	if block.NumberU64() < 1 {
+	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
 
