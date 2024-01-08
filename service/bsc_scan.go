@@ -811,11 +811,11 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return nil
 	}
 
-	if tmpCmp := amt.Cmp(big.NewInt(0)); tmpCmp == -1 {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
-		return nil
-	} else if tmpCmp == 0 {
+	if tmpCmp := amt.Cmp(big.NewInt(0)); tmpCmp == 0 {
 		return s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransferFrom, isPending...)
+		// } else if tmpCmp == -1 { // 由于 StringToBigint 会将负数直接抛出错误, 所以这里不需要判断, 注释掉这一部分代码
+		// 	log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
+		// 	return nil
 	}
 
 	// check balance of owner
