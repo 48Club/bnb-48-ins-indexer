@@ -299,7 +299,7 @@ response(json) (sorted by op_index desc)
                     "tick_hash": string,
                     "to": string,
                 },
-                "type": int, // 1：mint 2: transfer 3:recap
+                "type": int, // 1: mint 2: transfer 3: recap 4: burn 5: approve 6: transferFrom
                 "create_at": int,
                 "update_at": int,
                 "delete_at": int

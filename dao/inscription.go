@@ -45,33 +45,19 @@ func (h *InscriptionHandler) TableName() string {
 }
 
 func (h *InscriptionHandler) Count(db *gorm.DB) (int64, error) {
-	var (
-		res int64
-		err error
-	)
+	var res int64
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Count(&res)
 
-	if err = db.Table(h.TableName()).Count(&res).Error; err != nil {
-		return 0, err
-	}
-
-	return res, nil
+	return res, tx.Error
 }
 
 func (h *InscriptionHandler) Find(db *gorm.DB) ([]*InscriptionModel, error) {
-	var (
-		datas []*InscriptionModel
-		err   error
-	)
+	var datas []*InscriptionModel
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Find(&datas)
 
-	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
-		return nil, err
-	}
-
-	return datas, nil
+	return datas, tx.Error
 }
 
 func (h *InscriptionHandler) Create(db *gorm.DB, model *InscriptionModel) error {
@@ -99,19 +85,12 @@ func (h *InscriptionHandler) UpdateHolders(db *gorm.DB, tick_hash string, delta 
 		return err
 	}
 
-	if err := db.Table(h.TableName()).Update("holders", int64(res.Holders)+delta).Error; err != nil {
-		return err
-	}
-	return nil
+	return db.Table(h.TableName()).Update("holders", int64(res.Holders)+delta).Error
 }
 
 func (h *InscriptionHandler) Update(db *gorm.DB, id uint64, data map[string]interface{}) error {
-	var err error
 
 	data["update_at"] = time.Now().Unix()
-	if err = db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error; err != nil {
-		return err
-	}
 
-	return nil
+	return db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error
 }

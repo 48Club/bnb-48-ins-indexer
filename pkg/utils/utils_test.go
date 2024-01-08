@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bnb-48-ins-indexer/pkg/helper"
+	"math/big"
 	"testing"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -13,6 +14,34 @@ func TestMapSet(t *testing.T) {
 	m.Append("deploy", "recap", "mint")
 	assert.Equal(t, m.ToSlice(), []string{"deploy", "recap", "mint"})
 	assert.Equal(t, m.ContainsOne("deploy"), true)
+}
+
+func TestUpdateinscriptions(t *testing.T) {
+
+	type inscription struct {
+		Id       uint64
+		Miners   mapset.Set[string]
+		Max      *big.Int
+		Lim      *big.Int
+		Minted   *big.Int
+		Tick     string
+		TickHash string
+		DeployBy string
+	}
+	a := struct {
+		inscriptions map[string]*inscription // tick-hash : inscription
+
+	}{
+		inscriptions: map[string]*inscription{
+			"test": {
+				Max: big.NewInt(100),
+			},
+		},
+	}
+	b, ok := a.inscriptions["test"]
+	assert.Equal(t, ok, true)
+	b.Max = big.NewInt(200)
+	t.Log(a.inscriptions["test"].Max)
 }
 
 func TestInputToBNB48Inscription(t *testing.T) {

@@ -17,22 +17,22 @@ type IAccountRecords interface {
 }
 
 type AccountRecordsModel struct {
-	Id          uint64                   `json:"id,string" gorm:"primaryKey"`
-	Block       uint64                   `json:"block"`
-	BlockAt     uint64                   `json:"block_at"`            // timestamp in second
-	IsPending   bool                     `json:"is_pending" gorm:"-"` // true: pending, false: confirmed
-	TxHash      string                   `json:"tx_hash"`
-	OpIndex     uint64                   `json:"op_index"`
-	TxIndex     uint64                   `json:"tx_index"`
-	TickHash    string                   `json:"tick_hash"`
-	From        string                   `json:"from"`
-	To          string                   `json:"to"`
-	Input       string                   `json:"input"`
-	InputDecode *helper.BNB48Inscription `json:"input_decode" gorm:"-"`
-	Type        uint8                    `json:"type"`
-	CreateAt    int64                    `json:"create_at"`
-	UpdateAt    int64                    `json:"update_at"`
-	DeleteAt    int64                    `json:"delete_at"`
+	Id          uint64                    `json:"id,string" gorm:"primaryKey"`
+	Block       uint64                    `json:"block"`
+	BlockAt     uint64                    `json:"block_at"`            // timestamp in second
+	IsPending   bool                      `json:"is_pending" gorm:"-"` // true: pending, false: confirmed
+	TxHash      string                    `json:"tx_hash"`
+	OpIndex     uint64                    `json:"op_index"`
+	TxIndex     uint64                    `json:"tx_index"`
+	TickHash    string                    `json:"tick_hash"`
+	From        string                    `json:"from"`
+	To          string                    `json:"to"`
+	Input       string                    `json:"input"`
+	InputDecode *helper.BNB48Inscription  `json:"input_decode" gorm:"-"`
+	Type        helper.AccountRecordsType `json:"type"`
+	CreateAt    int64                     `json:"create_at"`
+	UpdateAt    int64                     `json:"update_at"`
+	DeleteAt    int64                     `json:"delete_at"`
 }
 
 type AccountRecordsHandler struct{}
@@ -58,46 +58,26 @@ func (h *AccountRecordsHandler) Create(db *gorm.DB, model *AccountRecordsModel) 
 }
 
 func (h *AccountRecordsHandler) Find(db *gorm.DB) ([]*AccountRecordsModel, error) {
-	var (
-		datas []*AccountRecordsModel
-		err   error
-	)
+	var datas []*AccountRecordsModel
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Find(&datas)
 
-	if err = db.Table(h.TableName()).Find(&datas).Error; err != nil {
-		return nil, err
-	}
-
-	return datas, nil
+	return datas, tx.Error
 }
 
 func (h *AccountRecordsHandler) Count(db *gorm.DB) (int64, error) {
-	var (
-		res int64
-		err error
-	)
+	var res int64
 
-	db = db.Where("delete_at = 0")
+	tx := db.Table(h.TableName()).Where("delete_at = 0").Count(&res)
 
-	if err = db.Table(h.TableName()).Count(&res).Error; err != nil {
-		return 0, err
-	}
-
-	return res, nil
+	return res, tx.Error
 }
 
 func (h *AccountRecordsHandler) FindByTxHash(db *gorm.DB, txHash string) ([]*AccountRecordsModel, error) {
-	var (
-		datas []*AccountRecordsModel
-		err   error
-	)
+	var datas []*AccountRecordsModel
 
 	db = db.Where("delete_at = 0")
 
-	if err = db.Table(h.TableName()).Where("tx_hash = ?", txHash).Order("op_index desc").Find(&datas).Error; err != nil {
-		return nil, err
-	}
-
-	return datas, nil
+	tx := db.Table(h.TableName()).Where("tx_hash = ?", txHash).Order("op_index desc").Find(&datas)
+	return datas, tx.Error
 }
