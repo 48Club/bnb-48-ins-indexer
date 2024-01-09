@@ -58,7 +58,10 @@ type ListInscriptionWalletReq struct {
 
 type ListRecordReq struct {
 	CommonListCond
-	TickHash string `json:"tick_hash" form:"tick_hash"`
+	TickHash    string `json:"tick_hash" form:"tick_hash"`
+	BlockNumber uint64 `json:"block_number" form:"block_number"`
+	TxIndex     uint64 `json:"tx_index" form:"tx_index"`
+	OpIndex     uint64 `json:"op_index" form:"op_index"`
 }
 
 type ListInscriptionRsp struct {
