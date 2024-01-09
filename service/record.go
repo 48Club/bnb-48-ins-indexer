@@ -30,6 +30,12 @@ func (s *RecordService) List(req bnb48types.ListRecordReq, bn bnb48types.BlockIn
 		if req.TickHash != "" {
 			tx = tx.Where("`tick_hash` = ?", req.TickHash)
 		}
+
+		if req.BlockNumber != 0 {
+			// 根据区块号查询
+			tx = tx.Where("`block` >= ?", req.BlockNumber).Where("IF(`block` = ?, tx_index >=? AND op_index >= ?, true)", req.BlockNumber, req.TxIndex, req.OpIndex)
+		}
+
 		var err error
 		count, err = s.recordDao.Count(tx)
 		if err != nil {

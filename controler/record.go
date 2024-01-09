@@ -31,26 +31,30 @@ func (c *RecordController) List(ctx *gin.Context) {
 
 	resList := []*dao.AccountRecordsModel{}
 	ramTx := []*dao.AccountRecordsModel{}
-	if _ramTx, ok := c.pendingTxs.TxsByTickHash[req.TickHash]; ok && len(_ramTx) > 0 {
-		for _, tx := range _ramTx {
-			ramTx = append(ramTx, tx)
+	if req.BlockNumber == 0 {
+		// 当从指定区块开始查询时，忽略内存中的交易
+		if _ramTx, ok := c.pendingTxs.TxsByTickHash[req.TickHash]; ok && len(_ramTx) > 0 {
+			for _, tx := range _ramTx {
+				ramTx = append(ramTx, tx)
+			}
+		}
+		ramTxLen := int64(len(ramTx))
+		if ramTxLen > 0 {
+			if ramTxLen >= int64(req.PageSize)*(req.Page+1) {
+				resList = ramTx[int64(req.PageSize)*(req.Page) : int64(req.PageSize)*(req.Page+1)]
+			} else if ramTxLen > int64(req.PageSize)*req.Page {
+				resList = ramTx[int64(req.PageSize)*req.Page:]
+			}
 		}
 	}
-	ramTxLen := int64(len(ramTx))
-	if ramTxLen > 0 {
-		if ramTxLen >= int64(req.PageSize)*(req.Page+1) {
-			resList = ramTx[int64(req.PageSize)*(req.Page) : int64(req.PageSize)*(req.Page+1)]
-		} else if ramTxLen > int64(req.PageSize)*req.Page {
-			resList = ramTx[int64(req.PageSize)*req.Page:]
-		}
-	}
+
 	res, err := c.recordS.List(req, c.pendingTxs.IndexBloukAt)
 
 	if err != nil {
 		utils.FailResponse(ctx, err.Error())
 		return
 	}
-	if lrl := len(resList); lrl < int(req.PageSize) {
+	if lrl := len(resList); lrl != 0 && lrl < int(req.PageSize) {
 		// 将 res.List 中的数据补充到 resList , 数量不能超过 req.PageSize
 		for i := 0; i < int(req.PageSize)-lrl; i++ {
 			if i >= len(res.List) {
@@ -58,8 +62,8 @@ func (c *RecordController) List(ctx *gin.Context) {
 			}
 			resList = append(resList, res.List[i])
 		}
+		res.List = resList
 	}
-	res.List = resList
 
 	utils.SuccessResponse(ctx, res)
 }
