@@ -25,7 +25,7 @@ func (s *RecordService) List(req bnb48types.ListRecordReq, bn bnb48types.BlockIn
 	var count int64
 	if err := db.Transaction(func(tx *gorm.DB) error {
 
-		tx = tx.Order("`block` desc, `tx_index` desc")
+		tx = tx.Order("`block` desc, `tx_index` desc, `op_index` desc")
 
 		if req.TickHash != "" {
 			tx = tx.Where("`tick_hash` = ?", req.TickHash)
