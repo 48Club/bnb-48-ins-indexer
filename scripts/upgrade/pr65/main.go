@@ -4,6 +4,7 @@ import (
 	_ "bnb-48-ins-indexer/config"
 	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
+	_ "bnb-48-ins-indexer/pkg/database"
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/utils"
 	"encoding/json"
@@ -11,14 +12,13 @@ import (
 )
 
 func Upgrade() {
-	database.NewMysql()
 	db := database.Mysql()
 
 	accountRecords := &dao.AccountRecordsHandler{}
 	datas := []dao.AccountRecordsModel{}
 	tx := db.Table(accountRecords.TableName()).Where("`op_json` IS NULL").Find(&datas)
 	if err := tx.Error; err != nil {
-		panic(fmt.Sprintf("if op_json column not exist, pls merge pr65 sql change first, err: %s", err.Error()))
+		panic(fmt.Sprintf("if op_json column not exist, pls merge pr65 sql change first, err:\n\t%s", err.Error()))
 	}
 	if tx.RowsAffected == 0 {
 		// no data need to upgrade

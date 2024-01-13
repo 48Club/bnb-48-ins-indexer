@@ -23,7 +23,7 @@ func (*gormLogger) Printf(format string, v ...interface{}) {
 }
 
 // NewMysql connect to mysql
-func NewMysql() {
+func init() {
 	var err error
 	_mysql := config.GetConfig().Mysql
 

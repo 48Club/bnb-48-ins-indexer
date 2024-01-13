@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS `allowance` (
 
 
 -- 2024-01-13
+
 ALTER TABLE `account_records` ADD `op_json` JSON NULL AFTER `input`;
 
 ALTER TABLE `account_records` ADD `op_json_op` VARCHAR(32) AS(JSON_UNQUOTE(op_json->"$.op")) STORED after `op_json`;

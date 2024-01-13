@@ -2,7 +2,7 @@ package api
 
 import (
 	"bnb-48-ins-indexer/config"
-	"bnb-48-ins-indexer/pkg/database"
+	_ "bnb-48-ins-indexer/pkg/database"
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/router"
@@ -21,7 +21,6 @@ import (
 func Start(pendingTxs *types.GlobalVariable) {
 	app := config.GetConfig().App
 	log.Init("api.log")
-	database.NewMysql()
 
 	gin.DefaultWriter = log.Write
 	r := router.NewBotRoute(pendingTxs)
