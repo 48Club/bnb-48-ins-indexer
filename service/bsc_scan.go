@@ -9,6 +9,7 @@ import (
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/utils"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -907,6 +908,10 @@ func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block 
 		To:       strings.ToLower(tx.To().Hex()),
 		Input:    hexutil.Encode(tx.Data()),
 		Type:     txType,
+		OpJson: func() string {
+			b, _ := json.Marshal(inscription)
+			return string(b)
+		}(),
 	}
 	if len(isPending) > 0 && isPending[0] {
 		s.updateRam(record, block)

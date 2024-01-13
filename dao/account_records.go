@@ -29,6 +29,10 @@ type AccountRecordsModel struct {
 	To          string                    `json:"to"`
 	Input       string                    `json:"input"`
 	InputDecode *helper.BNB48Inscription  `json:"input_decode" gorm:"-"`
+	OpJson      string                    `json:"-"`           // json 格式化跳过
+	OpJsonOp    string                    `json:"-" gorm:"->"` // 只读字段, json 格式化跳过
+	OpJsonFrom  string                    `json:"-" gorm:"->"` // 只读字段, json 格式化跳过
+	OpJsonTo    string                    `json:"-" gorm:"->"` // 只读字段, json 格式化跳过
 	Type        helper.AccountRecordsType `json:"type"`
 	CreateAt    int64                     `json:"create_at"`
 	UpdateAt    int64                     `json:"update_at"`

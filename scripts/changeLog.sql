@@ -24,3 +24,15 @@ CREATE TABLE IF NOT EXISTS `allowance` (
     UNIQUE KEY `owner_spender_tk` (`owner`, `spender`, `tick_hash`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
+
+-- 2024-01-13
+ALTER TABLE `account_records` ADD `op_json` JSON NULL AFTER `input`;
+
+ALTER TABLE `account_records` ADD `op_json_op` VARCHAR(32) AS(JSON_UNQUOTE(op_json->"$.op")) STORED after `op_json`;
+ALTER TABLE `account_records` ADD `op_json_from` VARCHAR(64) AS(JSON_UNQUOTE(op_json->"$.from")) STORED after `op_json_op`;
+ALTER TABLE `account_records` ADD `op_json_to` VARCHAR(64) AS(JSON_UNQUOTE(op_json->"$.to")) STORED after `op_json_from`;
+
+ALTER TABLE `account_records` ADD INDEX(`op_json_op`);
+ALTER TABLE `account_records` ADD INDEX(`op_json_from`);
+ALTER TABLE `account_records` ADD INDEX(`op_json_to`);
+
