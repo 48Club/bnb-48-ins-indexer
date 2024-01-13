@@ -1,8 +1,8 @@
 package dao
 
 import (
-	"bnb-48-ins-indexer/pkg/utils"
-	"fmt"
+	"encoding/json"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -118,27 +118,18 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 	}
 	accountRecordsModel := []AccountRecordsModel{}
 	db = db.Table((&AccountRecordsHandler{}).TableName())
-	addresss := utils.Address2Format(model.Address)
-	db.Where(
-		func(as []string, tx *gorm.DB) *gorm.DB {
-			for _, v := range as {
-				tx.Or("input like ?", fmt.Sprintf("%%%s%%", v))
-			}
-			return tx
-		}(addresss, db).Or("`from` = ?", model.Address),
-	).Where("delete_at = 0").Where("`tick_hash` = ?", model.TickHash)
-	if len(addresss) == 0 {
-		return nil
-	}
-
+	addresss := strings.ToLower(model.Address)
+	db.Table(h.TableName()).Where("delete_at = 0").Where("(`from` = ? OR `op_json_to` = ? AND `op_json_op` = ?) OR (`op_json_to` = ? OR op_json_from = ? AND `op_json_op` = ?)", addresss, addresss, "transfer", addresss, addresss, "transferFrom")
 	err := db.Limit(20 - relimit).Order("block desc, tx_index desc, op_index desc").Find(&accountRecordsModel).Error
 	for _, v := range accountRecordsModel {
-		changes, err := utils.InputToBNB48Inscription(v.Input, v.Block)
-		if err != nil || int(v.OpIndex) >= len(changes) {
-			continue
-		}
-		v.InputDecode = changes[v.OpIndex]
-		model.Changes = append(model.Changes, v)
+		// changes, err := utils.InputToBNB48Inscription(v.Input, v.Block)
+		// if err != nil || int(v.OpIndex) >= len(changes) {
+		// 	continue
+		// }
+		// v.InputDecode = changes[v.OpIndex]
+		// 使用辅助列直接解析
+		_ = json.Unmarshal([]byte(v.OpJson), &v.InputDecode)
 	}
+	model.Changes = append(model.Changes, accountRecordsModel...)
 	return err
 }

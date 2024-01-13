@@ -7,7 +7,7 @@ alter table account_records add unique tx_hash_op_index (`tx_hash`,`op_index`);
 
 ALTER TABLE `account_records` CHANGE `input` `input` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL;
 
--- 2023-01-05
+-- 2024-01-05
 
 CREATE TABLE IF NOT EXISTS `allowance` (
     `id` bigint unsigned NOT NULL,
@@ -23,4 +23,17 @@ CREATE TABLE IF NOT EXISTS `allowance` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `owner_spender_tk` (`owner`, `spender`, `tick_hash`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+
+-- 2024-01-13
+
+ALTER TABLE `account_records` ADD `op_json` JSON NULL AFTER `input`;
+
+ALTER TABLE `account_records` ADD `op_json_op` VARCHAR(32) AS(JSON_UNQUOTE(op_json->"$.op")) STORED after `op_json`;
+ALTER TABLE `account_records` ADD `op_json_from` VARCHAR(64) AS(JSON_UNQUOTE(op_json->"$.from")) STORED after `op_json_op`;
+ALTER TABLE `account_records` ADD `op_json_to` VARCHAR(64) AS(JSON_UNQUOTE(op_json->"$.to")) STORED after `op_json_from`;
+
+ALTER TABLE `account_records` ADD INDEX(`op_json_op`);
+ALTER TABLE `account_records` ADD INDEX(`op_json_from`);
+ALTER TABLE `account_records` ADD INDEX(`op_json_to`);
 
