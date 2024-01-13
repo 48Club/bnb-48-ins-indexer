@@ -7,7 +7,7 @@ alter table account_records add unique tx_hash_op_index (`tx_hash`,`op_index`);
 
 ALTER TABLE `account_records` CHANGE `input` `input` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL;
 
--- 2023-01-05
+-- 2024-01-05
 
 CREATE TABLE IF NOT EXISTS `allowance` (
     `id` bigint unsigned NOT NULL,
