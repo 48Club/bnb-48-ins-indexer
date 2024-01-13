@@ -7,6 +7,7 @@ import (
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/utils"
 	"encoding/json"
+	"fmt"
 )
 
 func Upgrade() {
@@ -16,9 +17,8 @@ func Upgrade() {
 	accountRecords := &dao.AccountRecordsHandler{}
 	datas := []dao.AccountRecordsModel{}
 	tx := db.Table(accountRecords.TableName()).Where("`op_json` IS NULL").Find(&datas)
-	if tx.Error != nil {
-		// if op_json column not exist, pls merge pr65 sql change first
-		panic(tx.Error)
+	if err := tx.Error; err != nil {
+		panic(fmt.Sprintf("if op_json column not exist, pls merge pr65 sql change first, err: %s", err.Error()))
 	}
 	if tx.RowsAffected == 0 {
 		// no data need to upgrade
@@ -37,9 +37,10 @@ func Upgrade() {
 		if err != nil {
 			panic(err)
 		}
-		if err := db.Table("account_records").Where("`id` = ?", ele.Id).Update("op_json", string(b)); err != nil {
+		if err := db.Table(accountRecords.TableName()).Where("`id` = ?", ele.Id).Update("`op_json`", string(b)).Error; err != nil {
 			panic(err)
 		}
 	}
+
 	log.Sugar.Info("upgrade pr65 success")
 }
