@@ -4,7 +4,7 @@ import (
 	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
 	bnb48types "bnb-48-ins-indexer/pkg/types"
-	"bnb-48-ins-indexer/pkg/utils"
+	"encoding/json"
 
 	"gorm.io/gorm"
 )
@@ -56,11 +56,13 @@ func (s *RecordService) List(req bnb48types.ListRecordReq, bn bnb48types.BlockIn
 		return nil, err
 	}
 	for k, v := range res {
-		changes, err := utils.InputToBNB48Inscription(v.Input, v.Block)
-		if err != nil || int(v.OpIndex) >= len(changes) {
-			continue
-		}
-		v.InputDecode = changes[v.OpIndex]
+		// changes, err := utils.InputToBNB48Inscription(v.Input, v.Block)
+		// if err != nil || int(v.OpIndex) >= len(changes) {
+		// 	continue
+		// }
+		// v.InputDecode = changes[v.OpIndex]
+		// 使用辅助列直接解析
+		_ = json.Unmarshal([]byte(v.OpJson), &v.InputDecode)
 		res[k] = v
 	}
 	resp := &bnb48types.ListRecordRsp{
@@ -77,11 +79,13 @@ func (s *RecordService) Get(req bnb48types.GetRecordReq) (*bnb48types.GetRecordR
 	}
 
 	for _, ele := range lists {
-		changes, err := utils.InputToBNB48Inscription(ele.Input, ele.Block)
-		if err != nil || int(ele.OpIndex) >= len(changes) {
-			continue
-		}
-		ele.InputDecode = changes[ele.OpIndex]
+		// changes, err := utils.InputToBNB48Inscription(ele.Input, ele.Block)
+		// if err != nil || int(ele.OpIndex) >= len(changes) {
+		// 	continue
+		// }
+		// ele.InputDecode = changes[ele.OpIndex]
+		// 使用辅助列直接解析
+		_ = json.Unmarshal([]byte(ele.OpJson), &ele.InputDecode)
 	}
 
 	return &bnb48types.GetRecordRsp{
