@@ -119,8 +119,8 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 	accountRecordsModel := []AccountRecordsModel{}
 	db = db.Table((&AccountRecordsHandler{}).TableName())
 	addresss := strings.ToLower(model.Address)
-	db.Table(h.TableName()).Where("delete_at = 0").Where("(`from` = ? OR `op_json_to` = ? AND `op_json_op` = ?) OR (`op_json_to` = ? OR op_json_from = ? AND `op_json_op` = ?)", addresss, addresss, "transfer", addresss, addresss, "transferFrom")
-	err := db.Limit(20 - relimit).Order("block desc, tx_index desc, op_index desc").Find(&accountRecordsModel).Error
+	db.Where("`delete_at` = 0 AND `tick_hash` = ?", model.TickHash).Where("(`from` = ? OR `op_json_to` = ? AND `op_json_op` = ?) OR (`op_json_to` = ? OR `op_json_from` = ? AND `op_json_op` = ?)", addresss, addresss, "transfer", addresss, addresss, "transferFrom")
+	err := db.Limit(20 - relimit).Order("`block` desc, `tx_index` desc, `op_index` desc").Find(&accountRecordsModel).Error
 	for _, v := range accountRecordsModel {
 		// changes, err := utils.InputToBNB48Inscription(v.Input, v.Block)
 		// if err != nil || int(v.OpIndex) >= len(changes) {

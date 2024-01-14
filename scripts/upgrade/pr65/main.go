@@ -4,7 +4,6 @@ import (
 	_ "bnb-48-ins-indexer/config"
 	"bnb-48-ins-indexer/dao"
 	"bnb-48-ins-indexer/pkg/database"
-	_ "bnb-48-ins-indexer/pkg/database"
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/utils"
 	"encoding/json"
@@ -12,6 +11,7 @@ import (
 )
 
 func Upgrade() {
+	log.Init("index.log")
 	db := database.Mysql()
 
 	accountRecords := &dao.AccountRecordsHandler{}
