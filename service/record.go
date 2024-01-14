@@ -62,8 +62,7 @@ func (s *RecordService) List(req bnb48types.ListRecordReq, bn bnb48types.BlockIn
 		// }
 		// v.InputDecode = changes[v.OpIndex]
 		// 使用辅助列直接解析
-		_ = json.Unmarshal([]byte(v.OpJson), &v.InputDecode)
-		res[k] = v
+		_ = json.Unmarshal([]byte(v.OpJson), &res[k].InputDecode)
 	}
 	resp := &bnb48types.ListRecordRsp{
 		CommonListRsp: bnb48types.BuildResponseInfo(count, req.Page, req.PageSize, bn),

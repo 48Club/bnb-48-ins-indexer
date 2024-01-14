@@ -121,14 +121,14 @@ func (h *AccountWalletHandler) LoadChanges(db *gorm.DB, model *AccountWalletMode
 	addresss := strings.ToLower(model.Address)
 	db.Where("`delete_at` = 0 AND `tick_hash` = ?", model.TickHash).Where("(`from` = ? OR `op_json_to` = ? AND `op_json_op` = ?) OR (`op_json_to` = ? OR `op_json_from` = ? AND `op_json_op` = ?)", addresss, addresss, "transfer", addresss, addresss, "transferFrom")
 	err := db.Limit(20 - relimit).Order("`block` desc, `tx_index` desc, `op_index` desc").Find(&accountRecordsModel).Error
-	for _, v := range accountRecordsModel {
+	for k, v := range accountRecordsModel {
 		// changes, err := utils.InputToBNB48Inscription(v.Input, v.Block)
 		// if err != nil || int(v.OpIndex) >= len(changes) {
 		// 	continue
 		// }
 		// v.InputDecode = changes[v.OpIndex]
 		// 使用辅助列直接解析
-		_ = json.Unmarshal([]byte(v.OpJson), &v.InputDecode)
+		_ = json.Unmarshal([]byte(v.OpJson), &accountRecordsModel[k].InputDecode)
 	}
 	model.Changes = append(model.Changes, accountRecordsModel...)
 	return err

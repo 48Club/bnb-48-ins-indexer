@@ -25,6 +25,17 @@ func init() {
 	}
 	db = _db
 }
+
+func TestLoadChanges(t *testing.T) {
+	accountRecordsModel := []*dao.AccountRecordsModel{}
+	db = db.Table((&dao.AccountRecordsHandler{}).TableName()).Where("delete_at = 0").Limit(1).Find(&accountRecordsModel)
+	for k, v := range accountRecordsModel {
+		_ = json.Unmarshal([]byte(v.OpJson), &accountRecordsModel[k].InputDecode)
+	}
+	b, _ := json.MarshalIndent(accountRecordsModel[0].InputDecode, "", "\t")
+	t.Log(string(b))
+}
+
 func TestIfInWhere(t *testing.T) {
 	/*
 		need sql like this:
