@@ -37,3 +37,9 @@ ALTER TABLE `account_records` ADD INDEX(`op_json_op`);
 ALTER TABLE `account_records` ADD INDEX(`op_json_from`);
 ALTER TABLE `account_records` ADD INDEX(`op_json_to`);
 
+
+-- 2024-01-15
+
+ALTER TABLE `inscription` ADD `minters` TEXT NOT NULL AFTER `miners`;
+ALTER TABLE `inscription` ADD `reserves` JSON NOT NULL AFTER `minters`;
+ALTER TABLE `inscription` ADD `commence` BIGINT NOT NULL DEFAULT '0' AFTER `block`;
