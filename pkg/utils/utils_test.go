@@ -3,17 +3,25 @@ package utils
 import (
 	"bnb-48-ins-indexer/pkg/helper"
 	"math/big"
+	"strings"
 	"testing"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStringJoin(t *testing.T) {
+	assert.Equal(t, strings.Join([]string{}, ","), "")
+}
+
 func TestMapSet(t *testing.T) {
 	m := mapset.NewSet[string]()
 	m.Append("deploy", "recap", "mint")
 	assert.Equal(t, m.ToSlice(), []string{"deploy", "recap", "mint"})
 	assert.Equal(t, m.ContainsOne("deploy"), true)
+	m.Clear()
+	m.Append([]string{}...)
+	assert.Equal(t, m.Cardinality(), 0)
 }
 
 func TestUpdateinscriptions(t *testing.T) {

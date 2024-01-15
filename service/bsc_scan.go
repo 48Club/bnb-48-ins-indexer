@@ -29,6 +29,7 @@ import (
 
 const (
 	FutureEnableBNForPR61 = uint64(35_084_848) // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/61
+	FutureEnableBNForPR67 = uint64(35_268_848) // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
 )
 
 type BscScanService struct {
@@ -45,6 +46,8 @@ type BscScanService struct {
 type inscription struct {
 	Id       uint64
 	Miners   mapset.Set[string]
+	Minters  mapset.Set[string]
+	Commence uint64
 	Max      *big.Int
 	Lim      *big.Int
 	Minted   *big.Int
@@ -77,8 +80,9 @@ func (s *BscScanService) init() error {
 
 	for _, ele := range inscs {
 		var (
-			insc   inscription
-			miners = mapset.NewSet[string]()
+			insc    inscription
+			miners  = mapset.NewSet[string]()
+			minters = mapset.NewSet[string]()
 		)
 		insc.Id = ele.Id
 		insc.Tick = ele.Tick
@@ -95,12 +99,22 @@ func (s *BscScanService) init() error {
 		}
 
 		if len(ele.Miners) >= 42 {
-			for _, ele := range strings.Split(ele.Miners, ",") {
-				miners.Add(ele)
+			for _, add := range strings.Split(ele.Miners, ",") {
+				miners.Add(add)
 			}
 		}
 
 		insc.Miners = miners
+
+		if ele.Block >= FutureEnableBNForPR67 {
+			if len(ele.Minters) >= 42 {
+				for _, add := range strings.Split(ele.Minters, ",") {
+					minters.Add(add)
+				}
+			}
+			insc.Minters = minters
+			insc.Commence = ele.Commence
+		}
 
 		s.inscriptions[ele.TickHash] = &insc
 	}
@@ -347,14 +361,35 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		Protocol: insc.P,
 		DeployBy: strings.ToLower(utils.GetTxFrom(tx).Hex()),
 	}
+
+	if inscriptionModel.Block >= FutureEnableBNForPR67 {
+		if len(insc.Commence) > 0 {
+			commence, err := utils.StringToBigint(insc.Commence)
+			if err != nil {
+				log.Sugar.Debugf("tx: %s, error: %s, commence: %s", tx.Hash().Hex(), "commence invalid", insc.Commence)
+				return nil
+			}
+			inscriptionModel.Commence = commence.Uint64()
+		}
+		inscriptionModel.Minters = strings.Join(insc.Minters, ",")
+		b, err := json.Marshal(insc.Reserves)
+		if err == nil {
+			inscriptionModel.Reserves = string(b)
+		}
+		// for k, v := range insc.Reserves {
+		// 	// TODO: init account wallet, update account wallet balance = v, update inscription holders +1
+		// }
+	}
+
 	if err = s.inscriptionDao.Create(db, inscriptionModel); err != nil {
 		return err
 	}
 
 	miners := mapset.NewSet[string]()
-	for _, miner := range insc.Miners {
-		miners.Add(miner)
-	}
+	miners.Append(insc.Miners...)
+	minters := mapset.NewSet[string]()
+	minters.Append(insc.Minters...)
+
 	s.inscriptions[hash] = &inscription{
 		Id:       inscriptionModel.Id,
 		Max:      max,
@@ -363,6 +398,8 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		Tick:     insc.Tick,
 		TickHash: hash,
 		Miners:   miners,
+		Minters:  minters,
+		Commence: inscriptionModel.Commence,
 	}
 
 	return nil
@@ -428,18 +465,37 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 }
 
 func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
-	amt, err := utils.StringToBigint(inscription.Amt)
-	if err != nil {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
-		return nil
-	}
-
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
 		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "not deploy")
 		return nil
 	}
+
+	if insc.Commence > 0 && block.NumberU64() < insc.Commence {
+		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "can not mint before commence")
+		return nil
+	}
+
+	// miners
+	if insc.Miners.Cardinality() > 0 && !insc.Miners.ContainsOne(strings.ToLower(block.Coinbase().Hex())) {
+		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
+		return nil
+	}
+
+	// sender
+	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	if insc.Minters.Cardinality() > 0 && !insc.Minters.ContainsOne(from) {
+		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "minters", insc.Minters, from)
+		return nil
+	}
+
+	amt, err := utils.StringToBigint(inscription.Amt)
+	if err != nil {
+		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
+		return nil
+	}
+
 	// minting ended
 	if insc.Minted.Cmp(insc.Max) >= 0 {
 		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "minting ended")
@@ -455,13 +511,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		log.Sugar.Debugf("tx: %s, error: %s, want: 0 < amt < %d, get: %d", tx.Hash().Hex(), "amt invalid", insc.Lim, amt)
 		return nil
 	}
-	// miners
-	if insc.Miners.Cardinality() > 0 && !insc.Miners.Contains(strings.ToLower(block.Coinbase().Hex())) {
-		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
-		return nil
-	}
 
-	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	to := strings.ToLower(tx.To().Hex())
 	// account
 	account, err := s.account.SelectByAddress(db, to)
@@ -924,7 +974,7 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 	s.pendingTxs.Lock()
 	defer s.pendingTxs.Unlock()
 
-	if s.pendingTxs.TxsHash.Contains(record.TxHash) {
+	if s.pendingTxs.TxsHash.ContainsOne(record.TxHash) {
 		return
 	}
 	record.IsPending = true
