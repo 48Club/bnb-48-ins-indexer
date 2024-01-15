@@ -167,6 +167,12 @@ func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, e
 }
 
 func verifyInscription(ins *helper.BNB48Inscription) bool {
+	for _, address := range []string{ins.To, ins.From, ins.Spender} {
+		if address != "" && !IsValidERCAddress(address) {
+			return false
+		}
+	}
+
 	if len(ins.P) > 42 {
 		return false
 	}
@@ -179,21 +185,12 @@ func verifyInscription(ins *helper.BNB48Inscription) bool {
 		return false
 	}
 
-	if len(ins.To) > 42 {
-		return false
-	}
-
-	if len(ins.From) > 42 {
-		return false
-	}
-
-	if len(ins.Spender) > 42 {
-		return false
-	}
-
-	miners := strings.Join(ins.Miners, ",")
-	if len(miners) > 2048 {
-		return false
+	for _, addresss := range [][]string{ins.Miners, ins.Minters} {
+		for _, address := range addresss {
+			if !IsValidERCAddress(address) {
+				return false
+			}
+		}
 	}
 
 	if ins.Decimals != "" {
@@ -207,35 +204,25 @@ func verifyInscription(ins *helper.BNB48Inscription) bool {
 		}
 	}
 
-	if ins.Max != "" {
-		max, err := StringToBigint(ins.Max)
-		if err != nil {
-			return false
-		}
+	for _, v := range []string{ins.Max, ins.Lim, ins.Amt, ins.Commence} {
+		if v != "" {
+			if bv, err := StringToBigint(v); err != nil {
+				return false
+			} else if bv.Cmp(maxU256) > 0 || bv.Uint64() < 1 {
+				return false
+			}
 
-		if max.Cmp(maxU256) > 0 || max.Uint64() < 1 {
-			return false
-		}
-	}
-
-	if ins.Lim != "" {
-		lim, err := StringToBigint(ins.Lim)
-		if err != nil {
-			return false
-		}
-
-		if lim.Cmp(maxU256) > 0 || lim.Uint64() < 1 {
-			return false
 		}
 	}
 
-	if ins.Amt != "" {
-		amt, err := StringToBigint(ins.Amt)
-		if err != nil {
+	for address, amt := range ins.Reserves {
+		if !IsValidERCAddress(address) {
 			return false
 		}
 
-		if amt.Cmp(maxU256) > 0 || amt.Uint64() < 1 {
+		if bv, err := StringToBigint(amt); err != nil {
+			return false
+		} else if bv.Cmp(maxU256) > 0 || bv.Uint64() < 1 {
 			return false
 		}
 	}
