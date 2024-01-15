@@ -336,13 +336,6 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		return nil
 	}
 
-	for _, miner := range insc.Miners {
-		if !utils.IsValidERCAddress(miner) {
-			log.Sugar.Debugf("tx: %s, error: %s, miner: %s", tx.Hash().Hex(), "invalid miner", miner)
-			return nil
-		}
-	}
-
 	hash := tx.Hash().Hex()
 	// add inscription
 	inscriptionModel := &dao.InscriptionModel{
@@ -594,11 +587,6 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
-	if !utils.IsValidERCAddress(inscription.To) {
-		log.Sugar.Debugf("tx: %s, error: %s, to: %s", tx.Hash().Hex(), "invalid to", inscription.To)
-		return nil
-	}
-
 	amt, err := s.transferForFrom(db, block, tx, inscription, index, opIndex, isPending...)
 	if err != nil {
 		return err
@@ -810,11 +798,6 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 		return nil
 	}
 
-	if !utils.IsValidERCAddress(inscription.Spender) {
-		log.Sugar.Debugf("tx: %s, error: %s, spender: %s", tx.Hash().Hex(), "invalid spender", inscription.Spender)
-		return nil
-	}
-
 	owner := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	amt, err := utils.StringToBigint(inscription.Amt)
 	if err != nil {
@@ -853,16 +836,6 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 	// not deploy
 	if !ok {
 		log.Sugar.Debugf("tx: %s, error: %s, tick-hash: %s", tx.Hash().Hex(), "not deploy", inscription.TickHash)
-		return nil
-	}
-
-	if !utils.IsValidERCAddress(inscription.From) {
-		log.Sugar.Debugf("tx: %s, error: %s, input from: %s", tx.Hash().Hex(), "invalid input from", inscription.From)
-		return nil
-	}
-
-	if !utils.IsValidERCAddress(inscription.To) {
-		log.Sugar.Debugf("tx: %s, error: %s, input to: %s", tx.Hash().Hex(), "invalid input to", inscription.To)
 		return nil
 	}
 

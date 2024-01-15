@@ -104,13 +104,6 @@ func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscripti
 			return nil, nil
 		}
 
-		obj.To = strings.ToLower(obj.To)
-		// obj.From = strings.ToLower(obj.From)
-		// obj.Spender = strings.ToLower(obj.Spender)
-		if len(obj.Miners) > 0 {
-			obj.Miners = strings.Split(strings.ToLower(strings.Join(obj.Miners, ",")), ",")
-		}
-
 		return []*helper.BNB48Inscription{obj}, nil
 	} else {
 		return nil, nil
@@ -147,15 +140,9 @@ func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, e
 	}
 	mustCheckOP := len(inss) > 1
 
-	for k, ins := range inss {
+	for _, ins := range inss {
 		if ok := verifyInscription(ins); !ok {
 			return nil, nil
-		}
-		inss[k].To = strings.ToLower(ins.To)
-		inss[k].Spender = strings.ToLower(ins.Spender)
-		inss[k].From = strings.ToLower(ins.From)
-		if len(ins.Miners) > 0 {
-			inss[k].Miners = strings.Split(strings.ToLower(strings.Join(ins.Miners, ",")), ",")
 		}
 
 		if mustCheckOP && bulkCannotContain.ContainsOne(ins.Op) {
@@ -167,10 +154,22 @@ func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, e
 }
 
 func verifyInscription(ins *helper.BNB48Inscription) bool {
-	for _, address := range []string{ins.To, ins.From, ins.Spender} {
-		if address != "" && !IsValidERCAddress(address) {
-			return false
-		}
+	if add, ok := IsValidERCAddress(ins.To); !ok {
+		return false
+	} else {
+		ins.To = add
+	}
+
+	if add, ok := IsValidERCAddress(ins.From); !ok {
+		return false
+	} else {
+		ins.From = add
+	}
+
+	if add, ok := IsValidERCAddress(ins.Spender); !ok {
+		return false
+	} else {
+		ins.Spender = add
 	}
 
 	if len(ins.P) > 42 {
@@ -185,11 +184,19 @@ func verifyInscription(ins *helper.BNB48Inscription) bool {
 		return false
 	}
 
-	for _, addresss := range [][]string{ins.Miners, ins.Minters} {
-		for _, address := range addresss {
-			if !IsValidERCAddress(address) {
-				return false
-			}
+	for k, address := range ins.Miners {
+		if add, ok := IsValidERCAddress(address); !ok {
+			return false
+		} else {
+			ins.Miners[k] = add
+		}
+	}
+
+	for k, address := range ins.Minters {
+		if add, ok := IsValidERCAddress(address); !ok {
+			return false
+		} else {
+			ins.Minters[k] = add
 		}
 	}
 
@@ -215,31 +222,32 @@ func verifyInscription(ins *helper.BNB48Inscription) bool {
 		}
 	}
 
+	reserves := map[string]string{}
 	for address, amt := range ins.Reserves {
-		if !IsValidERCAddress(address) {
+		add, ok := IsValidERCAddress(address)
+		if !ok {
 			return false
 		}
-
 		if bv, err := StringToBigint(amt); err != nil {
 			return false
 		} else if bv.Cmp(maxU256) > 0 || bv.Uint64() < 1 {
 			return false
 		}
+		reserves[add] = amt
 	}
 
 	return true
 }
 
-func IsValidERCAddress(address interface{}) bool {
-	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
-	switch v := address.(type) {
-	case string:
-		return re.MatchString(v)
-	case common.Address:
-		return re.MatchString(v.Hex())
-	default:
-		return false
+func IsValidERCAddress(address string) (string, bool) {
+	if address == "" {
+		return "", false
 	}
+	res := common.HexToAddress(address).Hex()
+	if strings.EqualFold(res, address) {
+		return strings.ToLower(address), true
+	}
+	return "", false
 }
 
 func Address2Format(address string) []string {
