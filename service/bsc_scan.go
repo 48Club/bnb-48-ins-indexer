@@ -47,6 +47,7 @@ type inscription struct {
 	Id       uint64
 	Miners   mapset.Set[string]
 	Minters  mapset.Set[string]
+	Block    uint64
 	Commence uint64
 	Max      *big.Int
 	Lim      *big.Int
@@ -111,6 +112,8 @@ func (s *BscScanService) init() error {
 			insc.Minters = minters
 			insc.Commence = ele.Commence
 		}
+
+		insc.Block = ele.Block
 
 		s.inscriptions[ele.TickHash] = &insc
 	}
@@ -395,6 +398,7 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		TickHash: hash,
 		Miners:   miners,
 		Minters:  minters,
+		Block:    inscriptionModel.Block,
 		Commence: inscriptionModel.Commence,
 	}
 
@@ -468,21 +472,24 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 		return nil
 	}
 
-	if insc.Commence > 0 && block.NumberU64() < insc.Commence {
-		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "can not mint before commence")
-		return nil
+	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	if insc.Block >= FutureEnableBNForPR67 {
+		// commence
+		if insc.Commence > 0 && block.NumberU64() < insc.Commence {
+			log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "can not mint before commence")
+			return nil
+		}
+
+		// sender whitelist
+		if insc.Minters.Cardinality() > 0 && !insc.Minters.ContainsOne(from) {
+			log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "minters", insc.Minters, from)
+			return nil
+		}
 	}
 
 	// miners
 	if insc.Miners.Cardinality() > 0 && !insc.Miners.ContainsOne(strings.ToLower(block.Coinbase().Hex())) {
 		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
-		return nil
-	}
-
-	// sender
-	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
-	if insc.Minters.Cardinality() > 0 && !insc.Minters.ContainsOne(from) {
-		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "minters", insc.Minters, from)
 		return nil
 	}
 
