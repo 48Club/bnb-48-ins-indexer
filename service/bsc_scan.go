@@ -99,18 +99,14 @@ func (s *BscScanService) init() error {
 		}
 
 		if len(ele.Miners) >= 42 {
-			for _, add := range strings.Split(ele.Miners, ",") {
-				miners.Add(add)
-			}
+			miners.Append(strings.Split(ele.Miners, ",")...)
 		}
 
 		insc.Miners = miners
 
 		if ele.Block >= FutureEnableBNForPR67 {
 			if len(ele.Minters) >= 42 {
-				for _, add := range strings.Split(ele.Minters, ",") {
-					minters.Add(add)
-				}
+				minters.Append(strings.Split(ele.Minters, ",")...)
 			}
 			insc.Minters = minters
 			insc.Commence = ele.Commence
