@@ -26,10 +26,20 @@ var (
 	dataRe, _         = regexp.Compile("data:([^\"]*),(.*)")
 	maxU256           = abi.MaxUint256
 	bulkCannotContain = mapset.NewSet[string]()
+	opHasAmtMin1      = mapset.NewSet[string]()
+	opHasAmtMin0      = mapset.NewSet[string]()
+	opHasTo           = mapset.NewSet[string]()
+)
+
+const (
+	FutureEnableBNForPR67 uint64 = 48_484_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
 )
 
 func init() {
 	bulkCannotContain.Append(config.GetConfig().App.BulkCannotContain...)
+	opHasAmtMin1.Append("mint", "transfer", "burn")
+	opHasAmtMin0.Append("approve", "transferFrom")
+	opHasTo.Append("transfer", "transferFrom")
 }
 
 func GetTxFrom(tx *types.Transaction) common.Address {
@@ -68,7 +78,7 @@ func StringToBigint(data string) (*big.Int, error) {
 	}
 
 	if data == "" {
-		data = "0"
+		return common.Big0, nil
 	}
 
 	bigint, ok := new(big.Int).SetString(data, 10)
@@ -79,7 +89,7 @@ func StringToBigint(data string) (*big.Int, error) {
 	return bigint, nil
 }
 
-func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscription, error) {
+func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48InscriptionVerified, error) {
 
 	bytes, err := hexutil.Decode(str)
 	if err != nil {
@@ -89,7 +99,7 @@ func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscripti
 	utfStr := string(bytes)
 
 	if len(bn) > 0 && bn[0] >= 34_778_248 /*支持 application/json 与 bulktTx 的区块高度*/ {
-		return InputToBNB48Inscription2(utfStr)
+		return InputToBNB48Inscription2(utfStr, bn...)
 	}
 
 	if len(utfStr) >= 6 && utfStr[:6] == "data:," {
@@ -99,18 +109,18 @@ func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48Inscripti
 		if err := json.Unmarshal([]byte(utfStr), obj); err != nil {
 			return nil, err
 		}
-
-		if ok := verifyInscription(obj); !ok {
+		objV, ok := verifyInscription(obj)
+		if !ok {
 			return nil, nil
 		}
 
-		return []*helper.BNB48Inscription{obj}, nil
+		return []*helper.BNB48InscriptionVerified{objV}, nil
 	} else {
 		return nil, nil
 	}
 }
 
-func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, err error) {
+func InputToBNB48Inscription2(utfStr string, bn ...uint64) (inss []*helper.BNB48InscriptionVerified, err error) {
 
 	rs := dataRe.FindStringSubmatch(utfStr)
 	if len(rs) != 3 {
@@ -126,117 +136,153 @@ func InputToBNB48Inscription2(utfStr string) (inss []*helper.BNB48Inscription, e
 		return nil, err
 	}
 
+	_inss := []*helper.BNB48Inscription{}
 	switch tmp.(type) {
 	case map[string]interface{}:
 		var i helper.BNB48Inscription
 		if err = json.Unmarshal([]byte(s), &i); err == nil {
-			inss = append(inss, &i)
+			_inss = append(_inss, &i)
 		}
 	case []interface{}:
 		var i []*helper.BNB48Inscription
 		if err = json.Unmarshal([]byte(s), &i); err == nil {
-			inss = append(inss, i...)
+			_inss = append(_inss, i...)
 		}
 	}
-	mustCheckOP := len(inss) > 1
+	mustCheckOP := len(_inss) > 1
 
-	for _, ins := range inss {
-		if ok := verifyInscription(ins); !ok {
+	for _, ins := range _inss {
+		objV, ok := verifyInscription(ins, bn...)
+		if !ok {
 			return nil, nil
 		}
 
 		if mustCheckOP && bulkCannotContain.ContainsOne(ins.Op) {
 			return nil, nil
 		}
+		inss = append(inss, objV)
 	}
 
 	return inss, err
 }
 
-func verifyInscription(ins *helper.BNB48Inscription) bool {
-	if add, ok := IsValidERCAddress(ins.To); !ok {
-		return false
-	} else {
-		ins.To = add
+func verifyInscription(_ins *helper.BNB48Inscription, bn ...uint64) (ins *helper.BNB48InscriptionVerified, b bool) {
+	var target uint64 = 0
+	if len(bn) > 0 {
+		target = bn[0]
 	}
-
-	if add, ok := IsValidERCAddress(ins.From); !ok {
-		return false
-	} else {
-		ins.From = add
-	}
-
-	if add, ok := IsValidERCAddress(ins.Spender); !ok {
-		return false
-	} else {
-		ins.Spender = add
+	ins = &helper.BNB48InscriptionVerified{
+		BNB48Inscription: _ins,
+		ReservesV:        map[string]*big.Int{},
 	}
 
 	if len(ins.P) > 42 {
-		return false
+		return ins, false
 	}
 
-	if len(ins.Tick) > 42 {
-		return false
+	if ins.Op != "deploy" && len(ins.TickHash) != 66 {
+		return ins, false
 	}
 
-	if len(ins.TickHash) > 66 {
-		return false
-	}
+	var ok bool
 
-	for k, address := range ins.Miners {
-		if add, ok := IsValidERCAddress(address); !ok {
-			return false
-		} else {
-			ins.Miners[k] = add
+	if opHasAmtMin0.ContainsOne(ins.Op) {
+		if ins.Amt == "" /* mandatory check */ || !parseAmt(ins, false) {
+			return ins, false
+		}
+	} else if opHasAmtMin1.ContainsOne(ins.Op) {
+		if ins.Amt == "" /* mandatory check */ || !parseAmt(ins, true) {
+			return ins, false
 		}
 	}
 
-	for k, address := range ins.Minters {
-		if add, ok := IsValidERCAddress(address); !ok {
-			return false
-		} else {
-			ins.Minters[k] = add
+	if opHasTo.ContainsOne(ins.Op) {
+		if ins.To == "" {
+			// mandatory check
+			return ins, false
+		}
+		if ins.To, ok = IsValidERCAddress(ins.To); !ok {
+			return ins, false
 		}
 	}
 
-	if ins.Decimals != "" {
-		decimals, err := StringToBigint(ins.Decimals)
-		if err != nil {
-			return false
+	switch ins.Op {
+	case "deploy":
+
+		if ins.Lim == "" || ins.Max == "" || ins.Tick == "" {
+			// mandatory check
+			return ins, false
 		}
 
-		if decimals.Uint64() > 18 {
-			return false
+		if len(ins.Tick) > 42 || !parseDecimals(ins) || !parseMax(ins) || !parseLim(ins) {
+			return ins, false
 		}
-	}
 
-	for _, v := range []string{ins.Max, ins.Lim, ins.Amt, ins.Commence} {
-		if v != "" {
-			if bv, err := StringToBigint(v); err != nil {
-				return false
-			} else if bv.Cmp(maxU256) > 0 || bv.Uint64() < 1 {
-				return false
+		if ins.MaxV.Cmp(ins.LimV) < 0 {
+			return ins, false
+		}
+
+		if common.Big0.Rem(ins.MaxV, ins.LimV).Uint64() != 0 {
+			return ins, false
+		}
+		for k, address := range ins.Miners {
+			if add, ok := IsValidERCAddress(address); !ok {
+				return ins, false
+			} else {
+				ins.Miners[k] = add
 			}
-
 		}
+		if target >= FutureEnableBNForPR67 {
+			if ins.Commence != "" && !parseCommence(ins) {
+				return ins, false
+			}
+			for address, amt := range ins.Reserves {
+				add, ok := IsValidERCAddress(address)
+				if !ok {
+					return ins, false
+				}
+				bv, err := StringToBigint(amt)
+				if err != nil {
+					return ins, false
+				} else if bv.Cmp(maxU256) > 0 || bv.Uint64() < 1 {
+					return ins, false
+				}
+				ins.ReservesV[add] = bv
+				ins.ReservesSum = new(big.Int).Add(ins.ReservesSum, bv)
+				// check sum
+				if ins.ReservesSum.Cmp(ins.MaxV) > 0 {
+					return ins, false
+				}
+			}
+			for k, address := range ins.Minters {
+				if add, ok := IsValidERCAddress(address); !ok {
+					return ins, false
+				} else {
+					ins.Minters[k] = add
+				}
+			}
+		}
+
+	case "recap":
+		if ins.Max == "" /* mandatory check */ || !parseMax(ins) {
+			return ins, false
+		}
+	case "approve":
+		if ins.Spender, ok = IsValidERCAddress(ins.Spender); !ok {
+			return ins, false
+		}
+	case "transferFrom":
+		if ins.From, ok = IsValidERCAddress(ins.From); !ok {
+			return ins, false
+		}
+	case "mint":
+	case "transfer":
+	case "burn":
+	default:
+		return ins, false
 	}
 
-	reserves := map[string]string{}
-	for address, amt := range ins.Reserves {
-		add, ok := IsValidERCAddress(address)
-		if !ok {
-			return false
-		}
-		if bv, err := StringToBigint(amt); err != nil {
-			return false
-		} else if bv.Cmp(maxU256) > 0 || bv.Uint64() < 1 {
-			return false
-		}
-		reserves[add] = amt
-	}
-
-	return true
+	return ins, true
 }
 
 func IsValidERCAddress(address string) (string, bool) {
@@ -261,4 +307,54 @@ func Address2Format(address string) []string {
 		res = append(res, hex.EncodeToString([]byte(v)))
 	}
 	return res
+}
+
+func parseDecimals(ins *helper.BNB48InscriptionVerified) bool {
+	var err error
+
+	ins.DecimalsV, err = StringToBigint(ins.Decimals)
+	if err != nil || ins.DecimalsV.Uint64() > 18 {
+		return false
+	}
+	return true
+}
+
+func parseMax(ins *helper.BNB48InscriptionVerified) bool {
+	var err error
+
+	ins.MaxV, err = StringToBigint(ins.Max)
+	return checkBigBetween(ins.MaxV, err, true)
+}
+
+func parseLim(ins *helper.BNB48InscriptionVerified) bool {
+	var err error
+
+	ins.LimV, err = StringToBigint(ins.Lim)
+	return checkBigBetween(ins.LimV, err, true)
+}
+
+func parseCommence(ins *helper.BNB48InscriptionVerified) bool {
+	var err error
+
+	ins.CommenceV, err = StringToBigint(ins.Commence)
+	return checkBigBetween(ins.CommenceV, err, true)
+}
+func checkBigBetween(b *big.Int, err error, checkMin bool) bool {
+	if err != nil {
+		return false
+	}
+	if b.Cmp(maxU256) > 0 {
+		return false
+	}
+	if checkMin && b.Uint64() < 1 {
+		return false
+	}
+	return true
+}
+
+func parseAmt(ins *helper.BNB48InscriptionVerified, b bool) bool {
+	var err error
+
+	ins.AmtV, err = StringToBigint(ins.Amt)
+	return checkBigBetween(ins.AmtV, err, b)
 }

@@ -1,5 +1,7 @@
 package helper
 
+import "math/big"
+
 type BNB48Inscription struct {
 	P        string            `json:"p"`
 	Op       string            `json:"op"`
@@ -16,4 +18,15 @@ type BNB48Inscription struct {
 	Minters  []string          `json:"minters"`
 	Reserves map[string]string `json:"reserves"`
 	Commence string            `json:"commence"`
+}
+
+type BNB48InscriptionVerified struct {
+	*BNB48Inscription
+	DecimalsV   *big.Int
+	MaxV        *big.Int
+	LimV        *big.Int
+	AmtV        *big.Int
+	ReservesV   map[string]*big.Int
+	ReservesSum *big.Int
+	CommenceV   *big.Int
 }
