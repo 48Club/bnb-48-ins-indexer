@@ -335,9 +335,35 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		if err == nil {
 			inscriptionModel.Reserves = string(b)
 		}
-		// for k, v := range insc.Reserves {
-		// 	// TODO: init account wallet, update account wallet balance = v, update inscription holders +1
-		// }
+
+		_ins := &helper.BNB48InscriptionVerified{
+			BNB48Inscription: &helper.BNB48Inscription{
+				P:        insc.P,
+				Op:       "mint",
+				TickHash: hash,
+			},
+		}
+		i := 0
+		for to, amt := range insc.ReservesV {
+			_ins.Amt = amt.String()
+			if err := s.createRecord(db, tx, block, _ins, index, i, "0x0000000000000000000000000000000000000000", to, helper.InscriptionStatusMint, false); err != nil {
+				return err
+			}
+			account, err := s.accountCheck(db, to)
+			if err != nil {
+				return err
+			}
+			if err = s.accountWallet.Create(db, &dao.AccountWalletModel{
+				AccountId: account.Id,
+				Tick:      insc.Tick,
+				TickHash:  hash,
+				Address:   to,
+				Balance:   amt.String(),
+			}); err != nil {
+				return err
+			}
+			i++
+		}
 	}
 
 	if err := s.inscriptionDao.Create(db, inscriptionModel); err != nil {
@@ -410,7 +436,7 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 	}
 
 	// add record
-	if err := s.createRecord(db, tx, block, inscription, index, 0, from, helper.InscriptionStatusRecap); err != nil {
+	if err := s.createRecord(db, tx, block, inscription, index, 0, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusRecap); err != nil {
 		return err
 	}
 
@@ -509,7 +535,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	// add record
-	if err = s.createRecord(db, tx, block, inscription, index, 0, from, helper.InscriptionStatusMint); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, 0, from, to, helper.InscriptionStatusMint); err != nil {
 		return err
 	}
 
@@ -590,25 +616,32 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 			return nil, err
 		}
 	}
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransfer, isPending...); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransfer, isPending...); err != nil {
 		return nil, err
 	}
 
 	return inscription.AmtV, nil
 }
-
-func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string, isPending ...bool) error {
-	// account
+func (s *BscScanService) accountCheck(db *gorm.DB, to string) (*dao.AccountModel, error) {
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			account = &dao.AccountModel{Address: to}
 			if err = s.account.Create(db, account); err != nil {
-				return err
+				return account, err
 			}
 		} else {
-			return err
+			return account, err
 		}
+	}
+	return account, err
+}
+
+func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string, isPending ...bool) error {
+	// account
+	account, err := s.accountCheck(db, to)
+	if err != nil {
+		return err
 	}
 
 	// update accountWallet
@@ -694,7 +727,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 		}
 	}
 
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusBurn); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusBurn); err != nil {
 
 		return err
 	}
@@ -727,7 +760,7 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 	owner := strings.ToLower(utils.GetTxFrom(tx).Hex())
 
 	// add record
-	if err := s.createRecord(db, tx, block, inscription, index, opIndex, owner, helper.InscriptionStatusApprove); err != nil {
+	if err := s.createRecord(db, tx, block, inscription, index, opIndex, owner, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusApprove); err != nil {
 		return err
 	}
 
@@ -756,7 +789,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 	}
 
 	if tmpCmp := inscription.AmtV.Cmp(big.NewInt(0)); tmpCmp == 0 {
-		return s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransferFrom, isPending...)
+		return s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransferFrom, isPending...)
 		// } else if tmpCmp == -1 { // 由于 StringToBigint 会将负数直接抛出错误, 所以这里不需要判断, 注释掉这一部分代码
 		// 	log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
 		// 	return nil
@@ -825,14 +858,14 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 
 	// add record for tx from
 
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransferFrom, isPending...); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransferFrom, isPending...); err != nil {
 		return err
 	}
 
 	return s.transferForTo(db, inscription.AmtV, insc, inscription.To)
 }
 
-func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block *types.Block, inscription *helper.BNB48InscriptionVerified, index, opIndex int, from string, txType helper.AccountRecordsType, isPending ...bool) error {
+func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block *types.Block, inscription *helper.BNB48InscriptionVerified, index, opIndex int, from, to string, txType helper.AccountRecordsType, isPending ...bool) error {
 	record := &dao.AccountRecordsModel{
 		Block:    block.NumberU64(),
 		TxHash:   tx.Hash().Hex(),
@@ -841,7 +874,7 @@ func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block 
 		TickHash: inscription.TickHash,
 		BlockAt:  block.Time(),
 		From:     from,
-		To:       strings.ToLower(tx.To().Hex()),
+		To:       to,
 		Input:    hexutil.Encode(tx.Data()),
 		Type:     txType,
 		OpJson: func() string {
