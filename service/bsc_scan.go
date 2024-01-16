@@ -316,6 +316,7 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		Lim:      insc.LimV.String(),
 		Miners:   strings.Join(insc.Miners, ","),
 		Minted:   insc.ReservesSum.String(),
+		Holders:  uint64(len(insc.Reserves)),
 		Status:   1,
 		Protocol: insc.P,
 		DeployBy: strings.ToLower(utils.GetTxFrom(tx).Hex()),
