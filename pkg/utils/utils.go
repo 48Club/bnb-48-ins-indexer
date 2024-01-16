@@ -226,10 +226,8 @@ func verifyInscription(_ins *helper.BNB48Inscription, bn ...uint64) (ins *helper
 			return ins, false
 		}
 		for k, address := range ins.Miners {
-			if add, ok := IsValidERCAddress(address); !ok {
+			if ins.Miners[k], ok = IsValidERCAddress(address); !ok {
 				return ins, false
-			} else {
-				ins.Miners[k] = add
 			}
 		}
 		if target >= FutureEnableBNForPR67 {
@@ -241,24 +239,20 @@ func verifyInscription(_ins *helper.BNB48Inscription, bn ...uint64) (ins *helper
 				if !ok {
 					return ins, false
 				}
-				bv, err := StringToBigint(amt)
-				if err != nil {
-					return ins, false
-				} else if bv.Cmp(maxU256) > 0 || bv.Uint64() < 1 {
+				amtV, err := StringToBigint(amt)
+				if !checkBigBetween(amtV, err, true) {
 					return ins, false
 				}
-				ins.ReservesV[add] = bv
-				ins.ReservesSum = new(big.Int).Add(ins.ReservesSum, bv)
+				ins.ReservesV[add] = amtV
+				ins.ReservesSum = new(big.Int).Add(ins.ReservesSum, amtV)
 				// check sum
 				if ins.ReservesSum.Cmp(ins.MaxV) > 0 {
 					return ins, false
 				}
 			}
 			for k, address := range ins.Minters {
-				if add, ok := IsValidERCAddress(address); !ok {
+				if ins.Minters[k], ok = IsValidERCAddress(address); !ok {
 					return ins, false
-				} else {
-					ins.Minters[k] = add
 				}
 			}
 		}
