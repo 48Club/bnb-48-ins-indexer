@@ -32,7 +32,7 @@ var (
 )
 
 const (
-	FutureEnableBNForPR67 uint64 = 48_484_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
+	FutureEnableBNForPR67 uint64 = 35_354_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
 )
 
 func init() {
