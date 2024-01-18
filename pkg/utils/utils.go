@@ -208,7 +208,6 @@ func verifyInscription(_ins *helper.BNB48Inscription, bn ...uint64) (ins *helper
 
 	switch ins.Op {
 	case "deploy":
-
 		if ins.Lim == "" || ins.Max == "" || ins.Tick == "" {
 			// mandatory check
 			return ins, false
@@ -247,7 +246,7 @@ func verifyInscription(_ins *helper.BNB48Inscription, bn ...uint64) (ins *helper
 				ins.ReservesSum = new(big.Int).Add(ins.ReservesSum, amtV)
 			}
 			// check sum
-			if ins.ReservesSum.Cmp(ins.MaxV) > 0 {
+			if ins.ReservesSum != nil && ins.ReservesSum.Cmp(ins.MaxV) > 0 {
 				return ins, false
 			}
 			for k, address := range ins.Minters {
