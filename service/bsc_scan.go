@@ -28,7 +28,8 @@ import (
 )
 
 const (
-	FutureEnableBNForPR61 = uint64(35_084_848) // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/61
+	FutureEnableBNForPR61 uint64 = 35_084_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/61
+	FutureEnableBNForPR67 uint64 = 35_354_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
 )
 
 type BscScanService struct {
@@ -45,6 +46,9 @@ type BscScanService struct {
 type inscription struct {
 	Id       uint64
 	Miners   mapset.Set[string]
+	Minters  mapset.Set[string]
+	Block    uint64
+	Commence uint64
 	Max      *big.Int
 	Lim      *big.Int
 	Minted   *big.Int
@@ -77,8 +81,9 @@ func (s *BscScanService) init() error {
 
 	for _, ele := range inscs {
 		var (
-			insc   inscription
-			miners = mapset.NewSet[string]()
+			insc    inscription
+			miners  = mapset.NewSet[string]()
+			minters = mapset.NewSet[string]()
 		)
 		insc.Id = ele.Id
 		insc.Tick = ele.Tick
@@ -95,12 +100,20 @@ func (s *BscScanService) init() error {
 		}
 
 		if len(ele.Miners) >= 42 {
-			for _, ele := range strings.Split(ele.Miners, ",") {
-				miners.Add(ele)
-			}
+			miners.Append(strings.Split(ele.Miners, ",")...)
 		}
 
 		insc.Miners = miners
+
+		if ele.Block >= FutureEnableBNForPR67 {
+			if len(ele.Minters) >= 42 {
+				minters.Append(strings.Split(ele.Minters, ",")...)
+			}
+			insc.Minters = minters
+			insc.Commence = ele.Commence
+		}
+
+		insc.Block = ele.Block
 
 		s.inscriptions[ele.TickHash] = &insc
 	}
@@ -289,47 +302,7 @@ func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transa
 	return nil
 }
 
-func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *helper.BNB48Inscription, index int) error {
-	if insc.Tick == "" {
-		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
-		return nil
-	}
-
-	decimals, err := utils.StringToBigint(insc.Decimals)
-	if err != nil || decimals.Uint64() > 18 {
-		log.Sugar.Debugf("tx: %s, error: %s, decimals: %s", tx.Hash().Hex(), "decimals invalid", insc.Decimals)
-		return nil
-	}
-
-	max, err := utils.StringToBigint(insc.Max)
-	if err != nil || max.Uint64() < 1 {
-		log.Sugar.Debugf("tx: %s, error: %s, max: %s", tx.Hash().Hex(), "max invalid", insc.Max)
-		return nil
-	}
-
-	lim, err := utils.StringToBigint(insc.Lim)
-	if err != nil || lim.Uint64() < 1 {
-		log.Sugar.Debugf("tx: %s, error: %s, lim: %s", tx.Hash().Hex(), "lim invalid", insc.Lim)
-		return nil
-	}
-
-	if max.Cmp(lim) < 0 {
-		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "max must gte lim", insc.Max, insc.Lim)
-		return nil
-	}
-
-	if new(big.Int).Rem(max, lim).Uint64() != 0 {
-		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "lim can not divisible by max", insc.Max, insc.Lim)
-		return nil
-	}
-
-	for _, miner := range insc.Miners {
-		if !utils.IsValidERCAddress(miner) {
-			log.Sugar.Debugf("tx: %s, error: %s, miner: %s", tx.Hash().Hex(), "invalid miner", miner)
-			return nil
-		}
-	}
-
+func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Transaction, insc *helper.BNB48InscriptionVerified, index int) error {
 	hash := tx.Hash().Hex()
 	// add inscription
 	inscriptionModel := &dao.InscriptionModel{
@@ -338,37 +311,88 @@ func (s *BscScanService) deploy(db *gorm.DB, block *types.Block, tx *types.Trans
 		TxIndex:  uint64(index),
 		Block:    block.NumberU64(),
 		BlockAt:  block.Time(),
-		Decimals: uint8(decimals.Uint64()),
-		Max:      max.String(),
-		Lim:      lim.String(),
+		Decimals: uint8(insc.DecimalsV.Uint64()),
+		Max:      insc.MaxV.String(),
+		Lim:      insc.LimV.String(),
 		Miners:   strings.Join(insc.Miners, ","),
-		Minted:   "0",
+		Minted:   insc.ReservesSum.String(),
+		Holders:  uint64(len(insc.Reserves)),
 		Status:   1,
 		Protocol: insc.P,
 		DeployBy: strings.ToLower(utils.GetTxFrom(tx).Hex()),
 	}
-	if err = s.inscriptionDao.Create(db, inscriptionModel); err != nil {
+
+	if inscriptionModel.Block >= FutureEnableBNForPR67 {
+		if len(insc.Commence) > 0 {
+			commence, err := utils.StringToBigint(insc.Commence)
+			if err != nil {
+				log.Sugar.Debugf("tx: %s, error: %s, commence: %s", tx.Hash().Hex(), "commence invalid", insc.Commence)
+				return nil
+			}
+			inscriptionModel.Commence = commence.Uint64()
+		}
+		inscriptionModel.Minters = strings.Join(insc.Minters, ",")
+		b, err := json.Marshal(insc.Reserves)
+		if err == nil {
+			inscriptionModel.Reserves = string(b)
+		}
+
+		_ins := &helper.BNB48InscriptionVerified{
+			BNB48Inscription: &helper.BNB48Inscription{
+				P:        insc.P,
+				Op:       "mint",
+				TickHash: hash,
+			},
+		}
+		i := 0
+		for to, amt := range insc.ReservesV {
+			_ins.Amt = amt.String()
+			if err := s.createRecord(db, tx, block, _ins, index, i, "0x0000000000000000000000000000000000000000", to, helper.InscriptionStatusMint, false); err != nil {
+				return err
+			}
+			account, err := s.accountCheck(db, to)
+			if err != nil {
+				return err
+			}
+			if err = s.accountWallet.Create(db, &dao.AccountWalletModel{
+				AccountId: account.Id,
+				Tick:      insc.Tick,
+				TickHash:  hash,
+				Address:   to,
+				Balance:   amt.String(),
+			}); err != nil {
+				return err
+			}
+			i++
+		}
+	}
+
+	if err := s.inscriptionDao.Create(db, inscriptionModel); err != nil {
 		return err
 	}
 
 	miners := mapset.NewSet[string]()
-	for _, miner := range insc.Miners {
-		miners.Add(miner)
-	}
+	miners.Append(insc.Miners...)
+	minters := mapset.NewSet[string]()
+	minters.Append(insc.Minters...)
+
 	s.inscriptions[hash] = &inscription{
 		Id:       inscriptionModel.Id,
-		Max:      max,
-		Lim:      lim,
-		Minted:   big.NewInt(0),
+		Max:      insc.MaxV,
+		Lim:      insc.LimV,
+		Minted:   insc.ReservesSum,
 		Tick:     insc.Tick,
 		TickHash: hash,
 		Miners:   miners,
+		Minters:  minters,
+		Block:    inscriptionModel.Block,
+		Commence: inscriptionModel.Commence,
 	}
 
 	return nil
 }
 
-func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
+func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index int) error {
 	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
@@ -387,23 +411,17 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 		return nil
 	}
 
-	max, err := utils.StringToBigint(inscription.Max)
-	if err != nil || max.Uint64() < 1 {
-		log.Sugar.Debugf("tx: %s, error: %s, max: %s", tx.Hash().Hex(), "max invalid", insc.Max)
-		return nil
-	}
-
-	if max.Cmp(insc.Max) > 0 {
+	if inscription.MaxV.Cmp(insc.Max) > 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, max: %s", tx.Hash().Hex(), "new target max", insc.Max)
 		return nil
 	}
 
-	if max.Cmp(insc.Lim) < 0 {
+	if inscription.MaxV.Cmp(insc.Lim) < 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "max must gte lim", insc.Max, insc.Lim)
 		return nil
 	}
 
-	if new(big.Int).Rem(max, insc.Lim).Uint64() != 0 {
+	if new(big.Int).Rem(inscription.MaxV, insc.Lim).Uint64() != 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, max: %s, lim: %s", tx.Hash().Hex(), "lim can not divisible by max", insc.Max, insc.Lim)
 		return nil
 	}
@@ -411,57 +429,62 @@ func (s *BscScanService) recap(db *gorm.DB, block *types.Block, tx *types.Transa
 	inscUpdate := map[string]interface{}{
 		"max": inscription.Max,
 	}
-	if insc.Minted.Cmp(max) >= 0 {
+	if insc.Minted.Cmp(inscription.MaxV) >= 0 {
 		inscUpdate["status"] = 2 // mint end
 	}
-	if err = s.inscriptionDao.Update(db, insc.Id, inscUpdate); err != nil {
+	if err := s.inscriptionDao.Update(db, insc.Id, inscUpdate); err != nil {
 		return err
 	}
 
 	// add record
-	if err = s.createRecord(db, tx, block, inscription, index, 0, from, helper.InscriptionStatusRecap); err != nil {
+	if err := s.createRecord(db, tx, block, inscription, index, 0, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusRecap); err != nil {
 		return err
 	}
 
-	insc.Max = max
+	insc.Max = inscription.MaxV
 	return nil
 }
 
-func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index int) error {
-	amt, err := utils.StringToBigint(inscription.Amt)
-	if err != nil {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "amt invalid", inscription.Amt)
-		return nil
-	}
-
+func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index int) error {
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
 		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "not deploy")
 		return nil
 	}
+
+	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
+	if insc.Block >= FutureEnableBNForPR67 {
+		// commence
+		if insc.Commence > 0 && block.NumberU64() < insc.Commence {
+			log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "can not mint before commence")
+			return nil
+		}
+
+		// sender whitelist
+		if insc.Minters.Cardinality() > 0 && !insc.Minters.ContainsOne(from) {
+			log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "minters", insc.Minters, from)
+			return nil
+		}
+	}
+
+	// miners
+	if insc.Miners.Cardinality() > 0 && !insc.Miners.ContainsOne(strings.ToLower(block.Coinbase().Hex())) {
+		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
+		return nil
+	}
+
 	// minting ended
 	if insc.Minted.Cmp(insc.Max) >= 0 {
 		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "minting ended")
 		return nil
 	}
 	// minting overflow
-	if new(big.Int).Add(amt, insc.Minted).Cmp(insc.Max) > 0 {
+	if new(big.Int).Add(inscription.AmtV, insc.Minted).Cmp(insc.Max) > 0 {
 		log.Sugar.Debugf("tx: %s, error: %s", tx.Hash().Hex(), "minting overflow")
 		return nil
 	}
-	// amt
-	if amt.Cmp(insc.Lim) > 0 || amt.Cmp(big.NewInt(0)) <= 0 {
-		log.Sugar.Debugf("tx: %s, error: %s, want: 0 < amt < %d, get: %d", tx.Hash().Hex(), "amt invalid", insc.Lim, amt)
-		return nil
-	}
-	// miners
-	if insc.Miners.Cardinality() > 0 && !insc.Miners.Contains(strings.ToLower(block.Coinbase().Hex())) {
-		log.Sugar.Debugf("tx: %s, error: %s, want: %s, get: %s", tx.Hash().Hex(), "miners", insc.Miners, block.Coinbase().Hex())
-		return nil
-	}
 
-	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	to := strings.ToLower(tx.To().Hex())
 	// account
 	account, err := s.account.SelectByAddress(db, to)
@@ -497,7 +520,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	updates := map[string]interface{}{
-		"balance": new(big.Int).Add(balance, amt).String(),
+		"balance": new(big.Int).Add(balance, inscription.AmtV).String(),
 	}
 	if err = s.accountWallet.UpdateBalanceByID(db, accountWallet.Id, updates); err != nil {
 		return err
@@ -513,12 +536,12 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	// add record
-	if err = s.createRecord(db, tx, block, inscription, index, 0, from, helper.InscriptionStatusMint); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, 0, from, to, helper.InscriptionStatusMint); err != nil {
 		return err
 	}
 
 	// update inscription
-	minted := new(big.Int).Add(insc.Minted, amt)
+	minted := new(big.Int).Add(insc.Minted, inscription.AmtV)
 	inscUpdate := map[string]interface{}{
 		"minted": minted.String(),
 	}
@@ -533,7 +556,7 @@ func (s *BscScanService) mint(db *gorm.DB, block *types.Block, tx *types.Transac
 	return nil
 }
 
-func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
+func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int, isPending ...bool) error {
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
@@ -541,17 +564,9 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return nil
 	}
 
-	if !utils.IsValidERCAddress(inscription.To) {
-		log.Sugar.Debugf("tx: %s, error: %s, to: %s", tx.Hash().Hex(), "invalid to", inscription.To)
-		return nil
-	}
-
 	amt, err := s.transferForFrom(db, block, tx, inscription, index, opIndex, isPending...)
 	if err != nil {
 		return err
-	}
-	if amt.Cmp(big.NewInt(0)) == 0 {
-		return nil
 	}
 
 	if err = s.transferForTo(db, amt, insc, inscription.To, isPending...); err != nil {
@@ -561,20 +576,9 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 	return nil
 }
 
-func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) (*big.Int, error) {
+func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int, isPending ...bool) (*big.Int, error) {
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 	zero := new(big.Int)
-
-	amt, err := utils.StringToBigint(inscription.Amt)
-	if err != nil {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
-		return zero, nil
-	}
-
-	if amt.Cmp(big.NewInt(0)) == 0 {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
-		return zero, nil
-	}
 
 	// sub balance of tx from
 	fromAccount, err := s.account.SelectByAddress(db, from)
@@ -595,13 +599,13 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 	if err != nil {
 		return nil, err
 	}
-	if currentBalance.Cmp(amt) < 0 {
+	if currentBalance.Cmp(inscription.AmtV) < 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, current balance: %s, need balance:%s", tx.Hash().Hex(), "insufficient balance", accountWallet.Balance, inscription.Amt)
 		return zero, nil
 	}
 
 	// add record for tx from
-	balance := new(big.Int).Sub(currentBalance, amt)
+	balance := new(big.Int).Sub(currentBalance, inscription.AmtV)
 	updates := map[string]interface{}{
 		"balance": balance.String(),
 	}
@@ -613,25 +617,32 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 			return nil, err
 		}
 	}
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransfer, isPending...); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransfer, isPending...); err != nil {
 		return nil, err
 	}
 
-	return amt, nil
+	return inscription.AmtV, nil
 }
-
-func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string, isPending ...bool) error {
-	// account
+func (s *BscScanService) accountCheck(db *gorm.DB, to string) (*dao.AccountModel, error) {
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			account = &dao.AccountModel{Address: to}
 			if err = s.account.Create(db, account); err != nil {
-				return err
+				return account, err
 			}
 		} else {
-			return err
+			return account, err
 		}
+	}
+	return account, err
+}
+
+func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string, isPending ...bool) error {
+	// account
+	account, err := s.accountCheck(db, to)
+	if err != nil {
+		return err
 	}
 
 	// update accountWallet
@@ -668,7 +679,7 @@ func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscript
 	return nil
 }
 
-func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
+func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int) error {
 	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
@@ -681,16 +692,6 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 	}
 
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
-	amt, err := utils.StringToBigint(inscription.Amt)
-	if err != nil {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
-		return nil
-	}
-
-	if amt.Cmp(big.NewInt(0)) <= 0 {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
-		return nil
-	}
 
 	// check balance of tx from
 	accountWallets, _ := s.accountWallet.SelectByAddressTickHash(db, from, []string{inscription.TickHash})
@@ -704,7 +705,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 		return err
 	}
 
-	balanceCmp := currentBalance.Cmp(amt)
+	balanceCmp := currentBalance.Cmp(inscription.AmtV)
 	if balanceCmp == -1 {
 		log.Sugar.Debugf("tx: %s, error: %s, current balance: %s, need balance:%s", tx.Hash().Hex(), "insufficient balance", accountWallet.Balance, inscription.Amt)
 		return nil
@@ -713,7 +714,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 	// add record for tx from
 	balance := common.Big0
 	if balanceCmp == 1 {
-		balance = new(big.Int).Sub(currentBalance, amt)
+		balance = new(big.Int).Sub(currentBalance, inscription.AmtV)
 	}
 	updates := map[string]interface{}{
 		"balance": balance.String(),
@@ -727,13 +728,13 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 		}
 	}
 
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusBurn); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusBurn); err != nil {
 
 		return err
 	}
 
 	// update inscription max
-	newMax := new(big.Int).Sub(insc.Max, amt)
+	newMax := new(big.Int).Sub(insc.Max, inscription.AmtV)
 	inscUpdate := map[string]interface{}{
 		"max": newMax.String(),
 	}
@@ -745,7 +746,7 @@ func (s *BscScanService) burn(db *gorm.DB, block *types.Block, tx *types.Transac
 	return nil
 }
 
-func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int) error {
+func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int) error {
 	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
@@ -757,25 +758,10 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 		return nil
 	}
 
-	if !utils.IsValidERCAddress(inscription.Spender) {
-		log.Sugar.Debugf("tx: %s, error: %s, spender: %s", tx.Hash().Hex(), "invalid spender", inscription.Spender)
-		return nil
-	}
-
 	owner := strings.ToLower(utils.GetTxFrom(tx).Hex())
-	amt, err := utils.StringToBigint(inscription.Amt)
-	if err != nil {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
-		return nil
-	}
-
-	if amt.Cmp(big.NewInt(0)) == -1 {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
-		return nil
-	}
 
 	// add record
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, owner, helper.InscriptionStatusApprove); err != nil {
+	if err := s.createRecord(db, tx, block, inscription, index, opIndex, owner, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusApprove); err != nil {
 		return err
 	}
 
@@ -785,12 +771,12 @@ func (s *BscScanService) approve(db *gorm.DB, block *types.Block, tx *types.Tran
 		TickHash: insc.TickHash,
 		Owner:    owner,
 		Spender:  inscription.Spender,
-		Amt:      inscription.Amt,
+		Amt:      inscription.AmtV.String(),
 		Position: fmt.Sprintf("%d_%d_%d", block.NumberU64(), index, opIndex),
 	})
 }
 
-func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48Inscription, index, opIndex int, isPending ...bool) error {
+func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int, isPending ...bool) error {
 	if block.NumberU64() < FutureEnableBNForPR61 {
 		return nil
 	}
@@ -803,24 +789,8 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return nil
 	}
 
-	if !utils.IsValidERCAddress(inscription.From) {
-		log.Sugar.Debugf("tx: %s, error: %s, input from: %s", tx.Hash().Hex(), "invalid input from", inscription.From)
-		return nil
-	}
-
-	if !utils.IsValidERCAddress(inscription.To) {
-		log.Sugar.Debugf("tx: %s, error: %s, input to: %s", tx.Hash().Hex(), "invalid input to", inscription.To)
-		return nil
-	}
-
-	amt, err := utils.StringToBigint(inscription.Amt)
-	if err != nil {
-		log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invalid amt", inscription.Amt)
-		return nil
-	}
-
-	if tmpCmp := amt.Cmp(big.NewInt(0)); tmpCmp == 0 {
-		return s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransferFrom, isPending...)
+	if tmpCmp := inscription.AmtV.Cmp(big.NewInt(0)); tmpCmp == 0 {
+		return s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransferFrom, isPending...)
 		// } else if tmpCmp == -1 { // 由于 StringToBigint 会将负数直接抛出错误, 所以这里不需要判断, 注释掉这一部分代码
 		// 	log.Sugar.Debugf("tx: %s, error: %s, amt: %s", tx.Hash().Hex(), "invaild amt", "0")
 		// 	return nil
@@ -841,7 +811,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 	if err != nil {
 		return err
 	}
-	currentBalanceCmp := currentBalance.Cmp(amt)
+	currentBalanceCmp := currentBalance.Cmp(inscription.AmtV)
 	if currentBalanceCmp < 0 {
 		log.Sugar.Debugf("tx: %s, error: %s, current balance: %s, need balance:%s", tx.Hash().Hex(), "insufficient balance", ownerWallet.Balance, inscription.Amt)
 		return nil
@@ -857,14 +827,14 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 		return utils.Error(err, gorm.ErrRecordNotFound, tx.Hash().Hex(), "allowance not found")
 	}
 	allowanceAmt := utils.MustStringToBigint(allowance.Amt)
-	if allowanceAmt.Cmp(amt) == -1 {
+	if allowanceAmt.Cmp(inscription.AmtV) == -1 {
 		log.Sugar.Debugf("tx: %s, error: %s, amt: %s, allowance amt: %s", tx.Hash().Hex(), "insufficient amt", inscription.Amt, allowance.Amt)
 		return nil
 	}
 
 	// update allowance of owner
 	allowanceUpdates := map[string]interface{}{
-		"amt": new(big.Int).Sub(allowanceAmt, amt).String(),
+		"amt": new(big.Int).Sub(allowanceAmt, inscription.AmtV).String(),
 	}
 	if err = s.allowance.Update(db, allowance.Id, allowanceUpdates); err != nil {
 		return err
@@ -873,7 +843,7 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 	// update balance of owner
 	balance := common.Big0
 	if currentBalanceCmp == 1 {
-		balance = new(big.Int).Sub(currentBalance, amt)
+		balance = new(big.Int).Sub(currentBalance, inscription.AmtV)
 	}
 	updates := map[string]interface{}{
 		"balance": balance.String(),
@@ -889,14 +859,14 @@ func (s *BscScanService) transferFrom(db *gorm.DB, block *types.Block, tx *types
 
 	// add record for tx from
 
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, helper.InscriptionStatusTransferFrom, isPending...); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransferFrom, isPending...); err != nil {
 		return err
 	}
 
-	return s.transferForTo(db, amt, insc, inscription.To)
+	return s.transferForTo(db, inscription.AmtV, insc, inscription.To)
 }
 
-func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block *types.Block, inscription *helper.BNB48Inscription, index, opIndex int, from string, txType helper.AccountRecordsType, isPending ...bool) error {
+func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block *types.Block, inscription *helper.BNB48InscriptionVerified, index, opIndex int, from, to string, txType helper.AccountRecordsType, isPending ...bool) error {
 	record := &dao.AccountRecordsModel{
 		Block:    block.NumberU64(),
 		TxHash:   tx.Hash().Hex(),
@@ -905,11 +875,11 @@ func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block 
 		TickHash: inscription.TickHash,
 		BlockAt:  block.Time(),
 		From:     from,
-		To:       strings.ToLower(tx.To().Hex()),
+		To:       to,
 		Input:    hexutil.Encode(tx.Data()),
 		Type:     txType,
 		OpJson: func() string {
-			b, _ := json.Marshal(inscription)
+			b, _ := json.Marshal(inscription.BNB48Inscription)
 			return string(b)
 		}(),
 	}
@@ -924,13 +894,13 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types
 	s.pendingTxs.Lock()
 	defer s.pendingTxs.Unlock()
 
-	if s.pendingTxs.TxsHash.Contains(record.TxHash) {
+	if s.pendingTxs.TxsHash.ContainsOne(record.TxHash) {
 		return
 	}
 	record.IsPending = true
 	changes, err := utils.InputToBNB48Inscription(record.Input, record.Block)
 	if err == nil && int(record.OpIndex) < len(changes) {
-		record.InputDecode = changes[record.OpIndex]
+		record.InputDecode = changes[record.OpIndex].BNB48Inscription
 	}
 
 	s.pendingTxs.TxsInBlock.Add(block.NumberU64())

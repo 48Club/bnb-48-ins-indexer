@@ -72,7 +72,6 @@ func TestIfInWhere(t *testing.T) {
 	wantSQL := "SELECT * FROM `account_records` WHERE `block` >= 35033698 AND (IF(`block` = 35033698, tx_index >=54 AND op_index >= 0, true)) AND delete_at = 0 ORDER BY `block` desc, `tx_index` desc LIMIT 30 OFFSET 240"
 	assert.Equal(t, wantSQL, sqlStr)
 }
-
 func TestNewStructToJson(t *testing.T) {
 	txHash := "0xba6e736afc6587c05d93fe22ddc6a53e380698ad233b05974881c961eb9bb938"
 	txFrom := strings.ToLower("0xaACc290a1A4c89F5D7bc29913122F5982916de48")

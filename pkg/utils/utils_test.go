@@ -3,17 +3,25 @@ package utils
 import (
 	"bnb-48-ins-indexer/pkg/helper"
 	"math/big"
+	"strings"
 	"testing"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStringJoin(t *testing.T) {
+	assert.Equal(t, strings.Join([]string{}, ","), "")
+}
+
 func TestMapSet(t *testing.T) {
 	m := mapset.NewSet[string]()
 	m.Append("deploy", "recap", "mint")
 	assert.Equal(t, m.ToSlice(), []string{"deploy", "recap", "mint"})
 	assert.Equal(t, m.ContainsOne("deploy"), true)
+	m.Clear()
+	m.Append([]string{}...)
+	assert.Equal(t, m.Cardinality(), 0)
 }
 
 func TestUpdateinscriptions(t *testing.T) {
@@ -231,7 +239,9 @@ func Test_verifyInscription(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, verifyInscription(tt.args.ins), "verifyInscription(%v)", tt.args.ins)
+			ojbV, ok := verifyInscription(tt.args.ins)
+			assert.True(t, ok)
+			assert.Equalf(t, tt.want, ojbV.BNB48Inscription, "verifyInscription(%v)", tt.args.ins)
 		})
 	}
 }

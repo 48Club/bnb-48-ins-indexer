@@ -23,11 +23,14 @@ type InscriptionModel struct {
 	TickHash string `json:"tick_hash"`
 	TxIndex  uint64 `json:"tx_index"`
 	Block    uint64 `json:"block"`
+	Commence uint64 `json:"commence"`
 	BlockAt  uint64 `json:"block_at"`
 	Decimals uint8  `json:"decimals"`
 	Max      string `json:"max"`
 	Lim      string `json:"lim"`
 	Miners   string `json:"miners"`
+	Minters  string `json:"minters"`
+	Reserves string `json:"reserves"`
 	Minted   string `json:"minted"`
 	Status   uint64 `json:"status"`
 	Protocol string `json:"protocol"`

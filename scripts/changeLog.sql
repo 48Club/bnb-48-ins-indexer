@@ -37,3 +37,10 @@ ALTER TABLE `account_records` ADD INDEX(`op_json_op`);
 ALTER TABLE `account_records` ADD INDEX(`op_json_from`);
 ALTER TABLE `account_records` ADD INDEX(`op_json_to`);
 
+
+-- 2024-01-15
+
+ALTER TABLE `inscription` ADD `minters` TEXT NOT NULL AFTER `miners`;
+ALTER TABLE `inscription` ADD `reserves` JSON NOT NULL AFTER `minters`;
+ALTER TABLE `inscription` ADD `commence` BIGINT NOT NULL DEFAULT '0' AFTER `block`;
+ALTER TABLE `inscription` CHANGE `miners` `miners` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL; -- type 变更为 text 保存更多数据
