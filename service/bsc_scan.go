@@ -890,42 +890,42 @@ func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block 
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
-	// todo: 添加 opIndex 判断
 	s.pendingTxs.Lock()
 	defer s.pendingTxs.Unlock()
 
-	if s.pendingTxs.TxsHash.ContainsOne(record.TxHash) {
+	txsHash := types2.BuildTxsHashKeyWithOpIndex(record.TxHash, record.OpIndex)
+	if s.pendingTxs.TxsHash.ContainsOne(txsHash) {
 		return
 	}
 	record.IsPending = true
+
 	changes, err := utils.InputToBNB48Inscription(record.Input, record.Block)
 	if err == nil && int(record.OpIndex) < len(changes) {
 		record.InputDecode = changes[record.OpIndex].BNB48Inscription
 	}
 
 	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
-	s.pendingTxs.TxsHash.Add(record.TxHash)
+	s.pendingTxs.TxsHash.Add(txsHash)
 
-	s.pendingTxs.Txs[record.TxHash] = record
+	s.pendingTxs.Txs[txsHash] = record
 
 	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
 		s.pendingTxs.TxsByAddr[record.From] = map[string]types2.RecordsModelByTxHash{
 			record.TickHash: {},
 		}
 	}
-	s.pendingTxs.TxsByAddr[record.From][record.TickHash][record.TxHash] = record
+	s.pendingTxs.TxsByAddr[record.From][record.TickHash][txsHash] = record
+
 	if _, ok := s.pendingTxs.TxsByAddr[record.To]; !ok {
 		s.pendingTxs.TxsByAddr[record.To] = map[string]types2.RecordsModelByTxHash{
 			record.TickHash: {},
 		}
 	}
-	s.pendingTxs.TxsByAddr[record.To][record.TickHash][record.TxHash] = record
+	s.pendingTxs.TxsByAddr[record.To][record.TickHash][txsHash] = record
 
 	if _, ok := s.pendingTxs.TxsByTickHash[record.TickHash]; !ok {
-		s.pendingTxs.TxsByTickHash[record.TickHash] = types2.RecordsModelByTxHash{
-			record.TxHash: {},
-		}
+		s.pendingTxs.TxsByTickHash[record.TickHash] = types2.RecordsModelByTxHash{}
 	}
-	s.pendingTxs.TxsByTickHash[record.TickHash][record.TxHash] = record
+	s.pendingTxs.TxsByTickHash[record.TickHash][txsHash] = record
 
 }

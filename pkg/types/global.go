@@ -2,11 +2,16 @@ package types
 
 import (
 	"bnb-48-ins-indexer/dao"
+	"fmt"
 	"math/big"
 	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 )
+
+func BuildTxsHashKeyWithOpIndex(txHash string, opIndex uint64) string {
+	return fmt.Sprintf("%s-%d", txHash, opIndex)
+}
 
 type GlobalVariable struct {
 	Txs           RecordsModelByTxHash
