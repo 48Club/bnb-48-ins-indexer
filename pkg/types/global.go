@@ -24,20 +24,20 @@ type GlobalVariable struct {
 	mu            sync.Mutex
 }
 
-func (g *GlobalVariable) UpdateTxsByAddr(from, tickHash, txHash string, record *dao.AccountRecordsModel) {
-	if _, ok := g.TxsByAddr[from]; !ok {
-		g.TxsByAddr[from] = map[string]RecordsModelByTxHash{
+func (g *GlobalVariable) UpdateTxsByAddr(address, tickHash, txHash string, record *dao.AccountRecordsModel) {
+	if _, ok := g.TxsByAddr[address]; !ok {
+		g.TxsByAddr[address] = map[string]RecordsModelByTxHash{
 			tickHash: {},
 		}
 	}
-	g.TxsByAddr[from][tickHash][txHash] = record
+	g.TxsByAddr[address][tickHash][txHash] = record
 }
 
 func (g *GlobalVariable) UpdateTxsByTickHash(tickHash, txHash string, record *dao.AccountRecordsModel) {
-	if _, ok := g.TxsByTickHash[record.TickHash]; !ok {
-		g.TxsByTickHash[record.TickHash] = RecordsModelByTxHash{}
+	if _, ok := g.TxsByTickHash[tickHash]; !ok {
+		g.TxsByTickHash[tickHash] = RecordsModelByTxHash{}
 	}
-	g.TxsByTickHash[record.TickHash][txHash] = record
+	g.TxsByTickHash[tickHash][txHash] = record
 }
 
 type BlockInfo struct {
