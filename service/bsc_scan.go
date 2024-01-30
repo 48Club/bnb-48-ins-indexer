@@ -884,48 +884,38 @@ func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block 
 		}(),
 	}
 	if len(isPending) > 0 && isPending[0] {
-		s.updateRam(record, block)
+		s.updateRam(record, block.NumberU64())
 	}
 	return s.accountRecords.Create(db, record)
 }
 
-func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, block *types.Block) {
-	// todo: 添加 opIndex 判断
+func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, bn uint64) {
 	s.pendingTxs.Lock()
 	defer s.pendingTxs.Unlock()
 
-	if s.pendingTxs.TxsHash.ContainsOne(record.TxHash) {
+	txsHash := types2.BuildTxsHashKeyWithOpIndex(record.TxHash, record.OpIndex)
+	if s.pendingTxs.TxsHash.ContainsOne(txsHash) {
 		return
 	}
 	record.IsPending = true
+
 	changes, err := utils.InputToBNB48Inscription(record.Input, record.Block)
 	if err == nil && int(record.OpIndex) < len(changes) {
 		record.InputDecode = changes[record.OpIndex].BNB48Inscription
 	}
 
-	s.pendingTxs.TxsInBlock.Add(block.NumberU64())
-	s.pendingTxs.TxsHash.Add(record.TxHash)
+	s.pendingTxs.TxsInBlock.Add(bn)
+	s.pendingTxs.TxsHash.Add(txsHash)
 
-	s.pendingTxs.Txs[record.TxHash] = record
+	s.pendingTxs.Txs[txsHash] = record
 
-	if _, ok := s.pendingTxs.TxsByAddr[record.From]; !ok {
-		s.pendingTxs.TxsByAddr[record.From] = map[string]types2.RecordsModelByTxHash{
-			record.TickHash: {},
-		}
+	s.pendingTxs.UpdateTxsByAddr(record.From, record.TickHash, txsHash, record)
+	s.pendingTxs.UpdateTxsByAddr(record.To, record.TickHash, txsHash, record)
+	s.pendingTxs.UpdateTxsByAddr(record.InputDecode.To, record.TickHash, txsHash, record)
+	if record.InputDecode.Op == "transferFrom" {
+		s.pendingTxs.UpdateTxsByAddr(record.InputDecode.From, record.TickHash, txsHash, record)
 	}
-	s.pendingTxs.TxsByAddr[record.From][record.TickHash][record.TxHash] = record
-	if _, ok := s.pendingTxs.TxsByAddr[record.To]; !ok {
-		s.pendingTxs.TxsByAddr[record.To] = map[string]types2.RecordsModelByTxHash{
-			record.TickHash: {},
-		}
-	}
-	s.pendingTxs.TxsByAddr[record.To][record.TickHash][record.TxHash] = record
 
-	if _, ok := s.pendingTxs.TxsByTickHash[record.TickHash]; !ok {
-		s.pendingTxs.TxsByTickHash[record.TickHash] = types2.RecordsModelByTxHash{
-			record.TxHash: {},
-		}
-	}
-	s.pendingTxs.TxsByTickHash[record.TickHash][record.TxHash] = record
+	s.pendingTxs.UpdateTxsByTickHash(record.TickHash, txsHash, record)
 
 }
