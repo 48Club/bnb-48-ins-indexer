@@ -120,15 +120,15 @@ func (s *BscScanService) init() error {
 	return nil
 }
 
-func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
-
+func (s *BscScanService) checkPendingTxs(targetBlockHeader, latestBlockHeader *types.Header) {
+	if !s.pendingTxs.TryLock() {
+		return
+	}
+	defer s.pendingTxs.Unlock()
 	{
-		if !s.pendingTxs.TryLock() {
-			return
-		}
 		// 删除已经确认的交易
 		for _, txHash := range s.pendingTxs.TxsHash.ToSlice() {
-			if tx, ok := s.pendingTxs.Txs[txHash]; ok && beginBH.Number.Uint64() >= tx.Block {
+			if tx, ok := s.pendingTxs.Txs[txHash]; ok && targetBlockHeader.Number.Uint64() >= tx.Block {
 				s.pendingTxs.TxsHash.Remove(txHash)
 				delete(s.pendingTxs.Txs, txHash)
 				if _, ok := s.pendingTxs.TxsByAddr[tx.From]; ok {
@@ -147,29 +147,23 @@ func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 				s.pendingTxs.TxsInBlock.Remove(tx.Block)
 			}
 		}
-		s.pendingTxs.Unlock()
 	}
 	{
 		// 添加新的交易
-		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), nil)
-		if err != nil {
-			return
-		}
-		if s.pendingTxs.BlockAt.Cmp(common.Big0) == 0 {
-			// 更新区块高度
-			s.pendingTxs.BlockAt = beginBH.Number
+		if bnAt := s.pendingTxs.BlockAt.Int64(); bnAt == 0 {
+			// 初始区块高度
+			s.pendingTxs.BlockAt = targetBlockHeader.Number
 		}
 		for {
 			targetBlock, err := global.BscClient.BlockByNumber(context.Background(), s.pendingTxs.BlockAt)
 			if err != nil {
-				time.Sleep(time.Second)
-				continue
+				return
 			}
 
 			if err = s.work(targetBlock, true); err != nil {
 				return
 			}
-			if s.pendingTxs.BlockAt.Cmp(targetBlockHeader.Number) == 0 {
+			if s.pendingTxs.BlockAt.Int64() >= latestBlockHeader.Number.Int64() {
 				break
 			}
 
@@ -203,7 +197,7 @@ func (s *BscScanService) Scan() error {
 			continue
 		} else if bnDiff < 15 {
 			// bnDiff < 15: 节点最新区块高度与目标区块高度差小于15
-			go s.checkPendingTxs(targetBlockHeader)
+			go s.checkPendingTxs(targetBlockHeader, latestBlockHeader)
 			<-tc.C
 			continue
 		}
@@ -897,10 +891,6 @@ func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block 
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, bn uint64) {
-	if !s.pendingTxs.TryLock() {
-		return
-	}
-	defer s.pendingTxs.Unlock()
 
 	txsHash := types2.BuildTxsHashKeyWithOpIndex(record.TxHash, record.OpIndex)
 	if s.pendingTxs.TxsHash.ContainsOne(txsHash) {
