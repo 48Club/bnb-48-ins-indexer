@@ -2,11 +2,14 @@ package utils
 
 import (
 	"bnb-48-ins-indexer/pkg/helper"
+	"context"
 	"math/big"
 	"strings"
 	"testing"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,6 +70,17 @@ func TestInputToBNB48Inscription(t *testing.T) {
 		assert.Equal(t, rs.Lim, "1")
 		assert.Equal(t, rs.Miners, []string{"0x72b61c6014342d914470ec7ac2975be345796c2b"})
 	}
+}
+
+func TestDecodeData(t *testing.T) {
+	ec, err := ethclient.Dial("https://1gwei.48.club")
+	assert.NoError(t, err)
+	tx, _, err := ec.TransactionByHash(context.Background(), common.HexToHash("0x8eb3c6f9159188a6f34b6db83886680b83f95a87c9c43a6ba18bcff7a601ad34"))
+	assert.NoError(t, err)
+
+	inss, err := InputToBNB48Inscription(tx.Data(), 36_244_355)
+	assert.NoError(t, err)
+	assert.Equal(t, len(inss), 1)
 }
 
 func Test_verifyInscription(t *testing.T) {

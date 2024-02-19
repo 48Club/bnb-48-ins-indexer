@@ -19,7 +19,6 @@ import (
 	types2 "bnb-48-ins-indexer/pkg/types"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -124,7 +123,9 @@ func (s *BscScanService) init() error {
 func (s *BscScanService) checkPendingTxs(beginBH *types.Header) {
 
 	{
-		s.pendingTxs.Lock()
+		if !s.pendingTxs.TryLock() {
+			return
+		}
 		// 删除已经确认的交易
 		for _, txHash := range s.pendingTxs.TxsHash.ToSlice() {
 			if tx, ok := s.pendingTxs.Txs[txHash]; ok && beginBH.Number.Uint64() >= tx.Block {
@@ -184,28 +185,34 @@ func (s *BscScanService) Scan() error {
 	}
 
 	block := s.conf.BscIndex.ScanBlock
+	tc := time.NewTicker(time.Second)
 
 	for {
-
 		targetBN := new(big.Int).SetUint64(block)
-		targetBlockHeader, err := global.BscClient.HeaderByNumber(context.Background(), targetBN)
-		if err == nil && time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
-			go s.checkPendingTxs(targetBlockHeader)
+		targetBlockHeader, err0 := global.BscClient.HeaderByNumber(context.Background(), targetBN)
+		latestBlockHeader, err1 := global.BscClient.HeaderByNumber(context.Background(), nil)
+
+		if err0 != nil || err1 != nil {
+			<-tc.C
+			continue
 		}
-		if err != nil || time.Now().Unix()-int64(targetBlockHeader.Time) < 45 {
-			time.Sleep(time.Second)
+
+		if bnDiff := latestBlockHeader.Number.Int64() - targetBlockHeader.Number.Int64(); bnDiff <= 0 {
+			// bnDiff <= 0: 节点最新区块高度小于等于目标区块高度
+			<-tc.C
+			continue
+		} else if bnDiff < 15 {
+			// bnDiff < 15: 节点最新区块高度与目标区块高度差小于15
+			go s.checkPendingTxs(targetBlockHeader)
+			<-tc.C
 			continue
 		}
 
 		targetBlock, err := global.BscClient.BlockByNumber(context.Background(), targetBN)
 
 		if err != nil {
-			if errors.Is(err, ethereum.NotFound) {
-				time.Sleep(time.Second)
-				continue
-			} else {
-				return err
-			}
+			<-tc.C
+			continue
 		}
 
 		if err = s.work(targetBlock); err != nil {
@@ -248,7 +255,7 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 }
 
 func (s *BscScanService) _work(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, isPending ...bool) error {
-	datas, err := utils.InputToBNB48Inscription(hexutil.Encode(tx.Data()), block.NumberU64())
+	datas, err := utils.InputToBNB48Inscription(tx.Data(), block.NumberU64())
 	if err != nil {
 		log.Sugar.Error(err)
 		return nil
@@ -890,7 +897,9 @@ func (s *BscScanService) createRecord(db *gorm.DB, tx *types.Transaction, block 
 }
 
 func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, bn uint64) {
-	s.pendingTxs.Lock()
+	if !s.pendingTxs.TryLock() {
+		return
+	}
 	defer s.pendingTxs.Unlock()
 
 	txsHash := types2.BuildTxsHashKeyWithOpIndex(record.TxHash, record.OpIndex)

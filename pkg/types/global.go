@@ -47,8 +47,8 @@ type BlockInfo struct {
 
 type RecordsModelByTxHash map[string]*dao.AccountRecordsModel
 
-func (g *GlobalVariable) Lock() {
-	g.mu.Lock()
+func (g *GlobalVariable) TryLock() bool {
+	return g.mu.TryLock()
 }
 
 func (g *GlobalVariable) Unlock() {

@@ -89,14 +89,20 @@ func StringToBigint(data string) (*big.Int, error) {
 	return bigint, nil
 }
 
-func InputToBNB48Inscription(str string, bn ...uint64) ([]*helper.BNB48InscriptionVerified, error) {
-
-	bytes, err := hexutil.Decode(str)
-	if err != nil {
-		return nil, err
+func InputToBNB48Inscription(i interface{}, bn ...uint64) ([]*helper.BNB48InscriptionVerified, error) {
+	var utfStr string
+	switch v := i.(type) {
+	case string:
+		b, e := hexutil.Decode(v)
+		if e != nil {
+			return nil, e
+		}
+		utfStr = string(b)
+	case []byte:
+		utfStr = string(v)
+	default:
+		return nil, fmt.Errorf("unsupported type: %T", i)
 	}
-
-	utfStr := string(bytes)
 
 	if len(bn) > 0 && bn[0] >= 34_778_248 /*支持 application/json 与 bulktTx 的区块高度*/ {
 		return InputToBNB48Inscription2(utfStr, bn...)
