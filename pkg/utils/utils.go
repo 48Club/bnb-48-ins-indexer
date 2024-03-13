@@ -252,8 +252,12 @@ func verifyInscription(_ins *helper.BNB48Inscription, bn ...uint64) (ins *helper
 				ins.ReservesSum = new(big.Int).Add(ins.ReservesSum, amtV)
 			}
 			// check sum
-			if ins.ReservesSum != nil && ins.ReservesSum.Cmp(ins.MaxV) > 0 {
-				return ins, false
+			if ins.ReservesSum != nil {
+				if ins.ReservesSum.Cmp(ins.MaxV) > 0 {
+					return ins, false
+				}
+			} else {
+				ins.ReservesSum = common.Big0 // default
 			}
 			for k, address := range ins.Minters {
 				if ins.Minters[k], ok = IsValidERCAddress(address); !ok {
