@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.1
+	github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.25
 	github.com/chenyahui/gin-cache v1.9.0
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/ethereum/go-ethereum v1.13.12

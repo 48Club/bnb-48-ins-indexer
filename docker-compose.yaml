@@ -49,3 +49,18 @@ services:
       - PMA_HOST=mysql
     logging:
       <<: *logging
+
+  tfans:
+    build:
+      context: .
+      dockerfile: ./bot/Dockerfile
+    restart: always
+    volumes:
+      - ./config:/48club/config
+    depends_on:
+      - mysql
+    environment:
+      - TOKEN=${TFANS_TOKEN}
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    logging:
+      <<: *logging
