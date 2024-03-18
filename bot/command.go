@@ -57,8 +57,12 @@ func messageEcho(b *gotgbot.Bot, ctx *ext.Context) error {
 					_, err := ctx.EffectiveMessage.Reply(b, "没有查询到相关交易记录", nil)
 					return err
 				}
+				txHash := fmt.Sprintf("([📶 Tx Hash](https://bscscan.com/tx/%s))", u.txHash.Hex())
+				if u.Validated.Uint64() == 0 {
+					txHash = ""
+				}
 
-				_, err := ctx.EffectiveMessage.Reply(b, fmt.Sprintf("钱包地址: %s\n有效预购: %.8f bFans([📶 Tx Hash](https://bscscan.com/tx/%s))\n退款数量: %.8f fans", address.Hex(), float64(u.Validated.Uint64())/1e8, u.txHash.Hex(), float64(u.Returned.Uint64())/1e8), &gotgbot.SendMessageOpts{
+				_, err := ctx.EffectiveMessage.Reply(b, fmt.Sprintf("钱包地址: %s\n有效预购: %.8f bFans%s\n退款数量: %.8f fans", address.Hex(), float64(u.Validated.Uint64())/1e8, txHash, float64(u.Returned.Uint64())/1e8), &gotgbot.SendMessageOpts{
 					ParseMode: gotgbot.ParseModeMarkdown,
 					LinkPreviewOptions: &gotgbot.LinkPreviewOptions{
 						IsDisabled: true,

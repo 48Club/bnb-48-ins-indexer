@@ -22,6 +22,7 @@ var (
 	block          uint64                   = 0
 	totalSum       *big.Int                 = big.NewInt(0)
 	totalReturnSum *big.Int                 = big.NewInt(0)
+	totalValidSum  *big.Int                 = big.NewInt(0)
 	maxSupply      *big.Int                 = big.NewInt(20_000_000_000_000)
 )
 
@@ -65,25 +66,35 @@ func sync() {
 				u, ok := users[f]
 				if ok {
 					u.Returned.Add(u.Returned, amt)
+					totalReturnSum.Add(totalReturnSum, amt)
 				} else {
 					tmp_user := user{
 						txHash:    common.HexToHash(data.TxHash),
 						Validated: big.NewInt(10_000_000_000),
-						Returned:  big.NewInt(0), //
+						Returned:  big.NewInt(0),
 					}
 					if cmp := amt.Cmp(tmp_user.Validated); cmp == 1 {
 						tmp_user.Returned = big.NewInt(0).Sub(amt, tmp_user.Validated)
 					} else if cmp == -1 {
 						tmp_user.Validated = amt
 					}
-					tmpTotalSum := big.NewInt(0).Add(totalSum, amt)
-					if tmpTotalSum.Cmp(maxSupply) == 1 {
-						tmp_user.Returned.Add(tmp_user.Returned, big.NewInt(0).Sub(tmpTotalSum, maxSupply))
+
+					tmpTotalValidSum := big.NewInt(0).Add(totalValidSum, tmp_user.Validated)
+					if tmpTotalValidSum.Cmp(maxSupply) == 1 {
+						if cmp := totalValidSum.Cmp(maxSupply); cmp == -1 {
+							tmp_user.Returned.Add(tmp_user.Returned, big.NewInt(0).Sub(tmpTotalValidSum, maxSupply))
+							tmp_user.Validated.Sub(tmp_user.Validated, tmp_user.Returned)
+						} else if cmp >= 0 {
+							tmp_user.Returned = amt
+							tmp_user.Validated = big.NewInt(0)
+						}
 					}
-					totalSum.Add(totalSum, big.NewInt(0).Sub(amt, tmp_user.Returned))
+
 					totalReturnSum.Add(totalReturnSum, tmp_user.Returned)
+					totalValidSum.Add(totalValidSum, tmp_user.Validated)
 					users[f] = &tmp_user
 				}
+				totalSum.Add(totalSum, amt)
 			}
 		}
 	}()
