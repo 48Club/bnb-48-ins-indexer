@@ -46,7 +46,11 @@ func commandExport(b *gotgbot.Bot, ctx *ext.Context) error {
 		tableHeader := []interface{}{"钱包地址", "有效映射", "退款数量", "有效交易"}
 		table := [][]interface{}{tableHeader}
 		for add, user := range users {
-			table = append(table, []interface{}{add.Hex(), fmt.Sprintf("%.8f", float64(user.Validated.Uint64())/1e8), fmt.Sprintf("%.8f", float64(user.Returned.Uint64())/1e8), user.txHash.Hex()})
+			txHash := user.txHash.Hex()
+			if user.Validated.Uint64() == 0 {
+				txHash = ""
+			}
+			table = append(table, []interface{}{add.Hex(), fmt.Sprintf("%.8f", float64(user.Validated.Uint64())/1e8), fmt.Sprintf("%.8f", float64(user.Returned.Uint64())/1e8), txHash})
 		}
 		for idx, row := range table {
 			cell, err := excelize.CoordinatesToCellName(1, idx+1)
