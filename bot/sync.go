@@ -26,7 +26,7 @@ var (
 	maxSupply      *big.Int                 = big.NewInt(20_000_000_000_000)
 )
 
-const beginBlock uint64 = 37023371
+const beginBlock uint64 = 37_000_000
 
 func sync() {
 	go func() {
@@ -47,7 +47,7 @@ func sync() {
 				continue
 			}
 			var datas []dao.AccountRecordsModel
-			tx := mySql.Table("`account_records`").Where("`op_json_to` = '0x9567443394a3a611A6335Bab0e64f7F5E0cD83fd' AND `op_json_op` = 'transfer' AND `block` BETWEEN ? AND ?", block, maxBlockInMysql).Order("`block` ASC, `tx_index` ASC, `op_index` ASC").Find(&datas)
+			tx := mySql.Table("`account_records`").Where("`tick_hash` = '0xd893ca77b3122cb6c480da7f8a12cb82e19542076f5895f21446258dc473a7c2' AND `op_json_to` = '0x9567443394a3a611A6335Bab0e64f7F5E0cD83fd' AND `op_json_op` = 'transfer' AND `block` BETWEEN ? AND ?", block, maxBlockInMysql).Order("`block` ASC, `tx_index` ASC, `op_index` ASC").Find(&datas)
 			if tx.Error != nil {
 				log.Println(tx.Error)
 				continue
@@ -74,7 +74,7 @@ func sync() {
 						Returned:  big.NewInt(0),
 					}
 					if cmp := amt.Cmp(tmp_user.Validated); cmp == 1 {
-						tmp_user.Returned = big.NewInt(0).Sub(amt, tmp_user.Validated)
+						tmp_user.Returned.Sub(amt, tmp_user.Validated)
 					} else if cmp == -1 {
 						tmp_user.Validated = amt
 					}
