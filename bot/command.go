@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 
 	gotgbot "github.com/PaulSonOfLars/gotgbot/v2"
@@ -43,6 +44,8 @@ func commandExport(b *gotgbot.Bot, ctx *ext.Context) error {
 			}
 		}()
 
+		validatedList := ""
+		returnedList := ""
 		tableHeader := []interface{}{"钱包地址", "有效映射", "退款数量", "有效交易"}
 		table := [][]interface{}{tableHeader}
 		for add, user := range users {
@@ -51,13 +54,19 @@ func commandExport(b *gotgbot.Bot, ctx *ext.Context) error {
 				txHash = ""
 			}
 			table = append(table, []interface{}{add.Hex(), fmt.Sprintf("%.8f", float64(user.Validated.Uint64())/1e8), fmt.Sprintf("%.8f", float64(user.Returned.Uint64())/1e8), txHash})
+			if user.Validated.Uint64() > 0 {
+				validatedList += fmt.Sprintf("%s,%.8f\n", add.Hex(), float64(user.Validated.Uint64())/1e8)
+			}
+			if user.Returned.Uint64() > 0 {
+				returnedList += fmt.Sprintf("%s,%.8f\n", add.Hex(), float64(user.Returned.Uint64())/1e8)
+			}
 		}
+		_ = f.SetSheetName("Sheet1", "bFans")
 		for idx, row := range table {
 			cell, err := excelize.CoordinatesToCellName(1, idx+1)
 			if err != nil {
 				return err
 			}
-			_ = f.SetSheetName("Sheet1", "bFans")
 			_ = f.SetSheetRow("bFans", cell, &row)
 		}
 
@@ -65,6 +74,21 @@ func commandExport(b *gotgbot.Bot, ctx *ext.Context) error {
 		_, err := b.SendDocument(ctx.EffectiveMessage.Chat.Id, gotgbot.NamedFile{
 			FileName: "bFans.xlsx",
 			File:     bf,
+		}, nil)
+		if err != nil {
+			return err
+		}
+		// 将 validatedList 和 returnedList 写入 io.Reader
+		_, err = b.SendDocument(adminUserId, gotgbot.NamedFile{
+			FileName: "validated.csv",
+			File:     bytes.NewBufferString(validatedList),
+		}, nil)
+		if err != nil {
+			return err
+		}
+		_, err = b.SendDocument(adminUserId, gotgbot.NamedFile{
+			FileName: "returned.csv",
+			File:     bytes.NewBufferString(returnedList),
 		}, nil)
 		return err
 	}
