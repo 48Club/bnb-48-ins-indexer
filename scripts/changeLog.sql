@@ -44,3 +44,8 @@ ALTER TABLE `inscription` ADD `minters` TEXT NOT NULL AFTER `miners`;
 ALTER TABLE `inscription` ADD `reserves` JSON NOT NULL AFTER `minters`;
 ALTER TABLE `inscription` ADD `commence` BIGINT NOT NULL DEFAULT '0' AFTER `block`;
 ALTER TABLE `inscription` CHANGE `miners` `miners` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL; -- type 变更为 text 保存更多数据
+
+
+-- 2024-03-21
+
+ALTER TABLE `account_records` CHANGE `input` `input` MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL; -- type 变更为 mediumtext 保存更多数据
