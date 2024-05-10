@@ -49,3 +49,20 @@ ALTER TABLE `inscription` CHANGE `miners` `miners` TEXT CHARACTER SET utf8mb4 CO
 -- 2024-03-21
 
 ALTER TABLE `account_records` CHANGE `input` `input` MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL; -- type 变更为 mediumtext 保存更多数据
+
+-- 2024-04-25
+
+CREATE TABLE IF NOT EXISTS `wrap` (
+    `id` bigint unsigned NOT NULL,
+    `tick_hash` varchar(66) NOT NULL DEFAULT '',
+    `tx_hash` varchar(66) NOT NULL DEFAULT '',
+    `to` varchar(42) NOT NULL DEFAULT '',
+    `amt` varchar(128) NOT NULL DEFAULT '0',
+    `type` tinyint unsigned NOT NULL,
+    `wrap_tx_hash` varchar(66) NOT NULL DEFAULT '',
+    `create_at` bigint unsigned NOT NULL DEFAULT '0',
+    `update_at` bigint unsigned NOT NULL DEFAULT '0',
+    `delete_at` bigint unsigned NOT NULL DEFAULT '0',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `tx_hash` (`tx_hash`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

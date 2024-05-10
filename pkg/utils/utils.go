@@ -361,3 +361,25 @@ func parseAmt(ins *helper.BNB48InscriptionVerified, b bool) bool {
 	ins.AmtV, err = StringToBigint(ins.Amt)
 	return checkBigBetween(ins.AmtV, err, b)
 }
+
+func Unpack(types []string, data []byte) ([]interface{}, error) {
+	var (
+		ts   []abi.Type
+		args = abi.Arguments{}
+	)
+
+	for _, t := range types {
+		_t, err := abi.NewType(t, t, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		ts = append(ts, _t)
+	}
+
+	for _, t := range ts {
+		args = append(args, abi.Argument{Type: t})
+	}
+
+	return args.Unpack(data)
+}
