@@ -51,6 +51,7 @@ func NewBotRoute(pendingTxs *types.GlobalVariable) *gin.Engine {
 		v1.POST("/inscription/list", inscription.List)
 		v1.POST("/account/balance", account.Balance)
 		v1.POST("/wrap_unwrap/list", wrap.List)
+		v1.POST("/wrap_unwrap/delete", wrap.Delete)
 	}
 
 	return r

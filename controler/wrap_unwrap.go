@@ -34,3 +34,19 @@ func (c *WrapController) List(ctx *gin.Context) {
 		List: res,
 	})
 }
+
+func (c *WrapController) Delete(ctx *gin.Context) {
+	var req bnb48types.DeleteWrapReq
+	if err := ctx.ShouldBind(&req); err != nil {
+		utils.FailResponse(ctx, err.Error())
+		return
+	}
+
+	err := c.wrap.Delete(req)
+	if err != nil {
+		utils.FailResponse(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(ctx, nil)
+}

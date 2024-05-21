@@ -84,3 +84,8 @@ type ListWrapReq struct {
 type ListWrapRsp struct {
 	List []dao.WrapModel `json:"list"`
 }
+
+type DeleteWrapReq struct {
+	Ids  []string `json:"ids" form:"ids" binding:"required"`
+	Hash string   `json:"hash" form:"hash" binding:"required"`
+}
