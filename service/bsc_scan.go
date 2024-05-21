@@ -993,7 +993,7 @@ func (s *BscScanService) WrapUnWrap(db *gorm.DB, block *types.Block, tx *types.T
 func (s *BscScanService) Wrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, tickHash string, amtv *big.Int, isPending ...bool) error {
 	var insc = helper.BNB48InscriptionVerified{BNB48Inscription: &helper.BNB48Inscription{}}
 	insc.From = strings.ToLower(utils.GetTxFrom(tx).Hex())
-	insc.To = strings.ToLower(s.conf.App.BscWrapCa)
+	insc.To = strings.ToLower(s.conf.App.ReceiveFansAddr)
 	insc.Op = "transfer"
 	insc.TickHash = tickHash
 	insc.AmtV = amtv

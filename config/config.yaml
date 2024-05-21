@@ -4,6 +4,7 @@ bnb48_index:
   route_prefix: /bnb48_index
   bsc_rpc: /opt/.ethereum/geth.ipc
   bsc_wrap_ca: 0x6D81f3049F7b79951551cF3E2AA8D409f9303c69
+  receive_fans_addr: 0x9567443394a3a611A6335Bab0e64f7F5E0cD83fd
   bulk_cannot_contain:
     - deploy
     - recap
