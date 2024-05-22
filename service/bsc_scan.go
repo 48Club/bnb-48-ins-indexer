@@ -32,6 +32,8 @@ const (
 	FutureEnableBNForPR67 uint64 = 35_354_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
 )
 
+var defaultBscScanService *BscScanService
+
 type BscScanService struct {
 	account        dao.IAccount
 	accountRecords dao.IAccountRecords
@@ -120,6 +122,7 @@ func (s *BscScanService) init() error {
 		s.inscriptions[ele.TickHash] = &insc
 	}
 
+	defaultBscScanService = s
 	return nil
 }
 
@@ -232,9 +235,17 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 	db := database.Mysql().Begin()
 	defer db.Rollback()
 
+	if _, err := s.inscriptionDao.Lock(db); err != nil {
+		return err
+	}
+
 	for index, tx := range block.Transactions() {
 		// 当索引出现错误时, 需要回退区块重新同步需要添加 sp 事务
 		// db.SavePoint("sp1")
+
+		if strings.EqualFold(tx.To().Hex(), s.conf.App.BscWrapCa) {
+			continue
+		}
 
 		if err := s._work(db, block, tx, index, isPending...); err != nil {
 			// if strings.Contains(strings.ToLower(err.Error()), strings.ToLower("1062 (23000): Duplicate entry")) {
@@ -630,6 +641,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 
 	return inscription.AmtV, nil
 }
+
 func (s *BscScanService) accountCheck(db *gorm.DB, to string) (*dao.AccountModel, error) {
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {

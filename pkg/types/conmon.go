@@ -86,6 +86,6 @@ type ListWrapRsp struct {
 }
 
 type DeleteWrapReq struct {
-	Ids  []string `json:"ids" form:"ids" binding:"required"`
+	Ids  []string `json:"ids" form:"ids" validate:"min=1,max=50"`
 	Hash string   `json:"hash" form:"hash" binding:"required"`
 }

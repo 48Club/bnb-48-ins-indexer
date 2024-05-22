@@ -10,6 +10,7 @@ type IWrap interface {
 	Create(db *gorm.DB, model *WrapModel) error
 	Delete(db *gorm.DB, ids []uint64, txHash string) error
 	List(db *gorm.DB, limit, t uint64) ([]WrapModel, error)
+	FindByIds(db *gorm.DB, ids []uint64) ([]WrapModel, error)
 }
 
 type WrapModel struct {
@@ -61,6 +62,14 @@ func (h *WrapHandler) List(db *gorm.DB, limit, t uint64) ([]WrapModel, error) {
 	var datas []WrapModel
 
 	tx := db.Table(h.TableName()).Where("delete_at = 0 and type = ?", t).Order("create_at asc").Limit(int(limit)).Find(&datas)
+
+	return datas, tx.Error
+}
+
+func (h *WrapHandler) FindByIds(db *gorm.DB, ids []uint64) ([]WrapModel, error) {
+	var datas []WrapModel
+
+	tx := db.Table(h.TableName()).Where("delete_at = 0 and id in ?", ids).Find(&datas)
 
 	return datas, tx.Error
 }
