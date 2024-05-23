@@ -161,6 +161,10 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		modelsDataMap[model.To] += model.Amt
 	}
 
+	if err = s.checkModels(modelsDataMap, transDataMap); err != nil {
+		return err
+	}
+
 	if _, err := s.inscriptionDao.Lock(tx); err != nil {
 		return err
 	}
