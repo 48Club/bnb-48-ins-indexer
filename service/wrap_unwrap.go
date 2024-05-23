@@ -49,10 +49,6 @@ func (s *WrapService) Delete(req bnb48types.DeleteWrapReq) error {
 		return err
 	}
 
-	if rs.Status != 1 {
-		return nil
-	}
-
 	tx := database.Mysql().Begin()
 	defer tx.Rollback()
 
@@ -223,6 +219,10 @@ func (s *WrapService) transferForFrom(db *gorm.DB, block *types.Block, tx *types
 }
 
 func (s *WrapService) deleteForUnWrap(rs *types.Receipt, models []dao.WrapModel) error {
+	if rs.Status != 1 {
+		return nil
+	}
+	
 	uintTy, err := abi.NewType("uint256", "uint256", nil)
 	if err != nil {
 		return err
