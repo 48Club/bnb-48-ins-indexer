@@ -7,6 +7,7 @@ import (
 	"bnb-48-ins-indexer/pkg/helper"
 	bnb48types "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
+	"bytes"
 	"context"
 	"errors"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -110,9 +111,10 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		return err
 	}
 
-	if len(trans.Data()) < 4 {
+	if len(trans.Data()) < 4 || !bytes.Equal(trans.Data()[:4], []byte{94, 247, 241, 217}) {
 		return errors.New("tx data error")
 	}
+
 	datas, err := utils.InputToBNB48Inscription(trans.Data()[:4], blockNumber.Uint64())
 	if err != nil {
 		return err
