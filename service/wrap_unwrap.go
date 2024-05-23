@@ -133,7 +133,7 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		return err
 	}
 
-	transDataMap := make(map[string]string, len(datas))
+	transDataMap := make(map[string]string)
 
 	for _, data := range datas {
 		if data == nil {
@@ -152,18 +152,13 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 			return errors.New("TickHash not eq")
 		}
 
-		transDataMap[strings.ToLower(data.To)] = data.Amt
+		transDataMap[strings.ToLower(data.To)] += data.Amt
 	}
 
+	modelsDataMap := make(map[string]string)
 	// check address and amt
 	for _, model := range models {
-		amt, ok := transDataMap[model.To]
-		if !ok {
-			return errors.New("check amt error")
-		}
-		if model.Amt != amt {
-			return errors.New("amt not eq")
-		}
+		modelsDataMap[model.To] += model.Amt
 	}
 
 	if _, err := s.inscriptionDao.Lock(tx); err != nil {
@@ -267,16 +262,29 @@ func (s *WrapService) deleteForUnWrap(rs *types.Receipt, models []dao.WrapModel)
 		}
 
 		to := strings.ToLower(common.BytesToAddress(event.Topics[2].Bytes()).Hex())
-		transDataMap[to] = data[0].(*big.Int).String()
+		transDataMap[to] += data[0].(*big.Int).String()
 	}
 
 	// check address and amt
+	modelsDataMap := make(map[string]string)
 	for _, model := range models {
-		amt, ok := transDataMap[model.To]
+		modelsDataMap[model.To] += model.Amt
+	}
+
+	return s.checkModels(modelsDataMap, transDataMap)
+}
+
+func (s *WrapService) checkModels(models, transData map[string]string) error {
+	if len(models) != len(transData) {
+		return errors.New("len not eq")
+	}
+
+	for address, amt := range models {
+		_amt, ok := transData[address]
 		if !ok {
 			return errors.New("check amt error")
 		}
-		if model.Amt != amt {
+		if _amt != amt {
 			return errors.New("amt not eq")
 		}
 	}
