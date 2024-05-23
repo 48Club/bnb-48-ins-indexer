@@ -18,6 +18,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type WrapService struct {
@@ -26,6 +27,15 @@ type WrapService struct {
 }
 
 func NewWrapService() *WrapService {
+	for {
+		if defaultBscScanService == nil {
+			time.Sleep(time.Millisecond * 100)
+			continue
+		}
+
+		break
+	}
+
 	return &WrapService{
 		BscScanService: defaultBscScanService,
 		wrapDao:        &dao.WrapHandler{},
