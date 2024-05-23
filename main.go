@@ -5,7 +5,6 @@ import (
 	"bnb-48-ins-indexer/cmd/index"
 	"bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/scripts/upgrade/pr65"
-
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -13,8 +12,9 @@ import (
 var PendingTxs types.GlobalVariable
 
 func main() {
-	api.Start(&PendingTxs)
-	index.Start(&PendingTxs)
+	go api.Start(&PendingTxs)
+	go index.Start(&PendingTxs)
+	select {}
 }
 
 func init() {
