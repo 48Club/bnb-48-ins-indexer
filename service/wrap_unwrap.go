@@ -5,6 +5,7 @@ import (
 	"bnb-48-ins-indexer/pkg/database"
 	"bnb-48-ins-indexer/pkg/global"
 	"bnb-48-ins-indexer/pkg/helper"
+	"bnb-48-ins-indexer/pkg/log"
 	bnb48types "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
 	"bytes"
@@ -115,6 +116,7 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		return errors.New("tx data error")
 	}
 
+	log.Sugar.Info(trans.Data()[4:])
 	var txData string
 	r, err := utils.Unpack([]string{"string"}, trans.Data()[4:])
 	if err != nil {
@@ -128,6 +130,7 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		return errors.New("data parse error")
 	}
 
+	log.Sugar.Info(txData)
 	datas, err := utils.InputToBNB48Inscription([]byte(txData), blockNumber.Uint64())
 	if err != nil {
 		return err
@@ -279,6 +282,8 @@ func (s *WrapService) deleteForUnWrap(rs *types.Receipt, models []dao.WrapModel)
 }
 
 func (s *WrapService) checkModels(models, transData map[string]string) error {
+	log.Sugar.Info(models)
+	log.Sugar.Info(transData)
 	if len(models) != len(transData) {
 		return errors.New("len not eq")
 	}
