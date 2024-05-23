@@ -13,8 +13,8 @@ import (
 var PendingTxs types.GlobalVariable
 
 func main() {
-	api.Start(&PendingTxs)
 	index.Start(&PendingTxs)
+	api.Start(&PendingTxs)
 }
 
 func init() {
