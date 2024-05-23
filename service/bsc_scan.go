@@ -243,8 +243,10 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 		// 当索引出现错误时, 需要回退区块重新同步需要添加 sp 事务
 		// db.SavePoint("sp1")
 
-		if tx.To() == nil || strings.EqualFold(tx.To().Hex(), s.conf.App.BscWrapCa) {
-			continue
+		if tx.To() != nil && strings.EqualFold(tx.To().Hex(), s.conf.App.BscWrapCa) {
+			if err := s.WrapUnWrap(db, block, tx, index, isPending...); err != nil {
+				return err
+			}
 		}
 
 		if err := s._work(db, block, tx, index, isPending...); err != nil {
@@ -252,9 +254,6 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 			// 	db.RollbackTo("sp1")
 			// 	continue
 			// }
-			return err
-		}
-		if err := s.WrapUnWrap(db, block, tx, index, isPending...); err != nil {
 			return err
 		}
 	}
