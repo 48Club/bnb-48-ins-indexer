@@ -115,7 +115,20 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		return errors.New("tx data error")
 	}
 
-	datas, err := utils.InputToBNB48Inscription(trans.Data()[:4], blockNumber.Uint64())
+	var data string
+	r, err := utils.Unpack([]string{"string"}, trans.Data()[4:])
+	if err != nil {
+		return err
+	}
+
+	switch r[0].(type) {
+	case string:
+		data = r[0].(string)
+	default:
+		return errors.New("data parse error")
+	}
+
+	datas, err := utils.InputToBNB48Inscription([]byte(data), blockNumber.Uint64())
 	if err != nil {
 		return err
 	}
