@@ -10,9 +10,11 @@ import (
 	"bnb-48-ins-indexer/pkg/utils"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"gorm.io/gorm"
 	"math/big"
@@ -126,7 +128,6 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		return errors.New("tx data error")
 	}
 
-	log.Sugar.Info(trans.Data()[4:])
 	var txData string
 	r, err := utils.Unpack([]string{"string"}, trans.Data()[4:])
 	if err != nil {
@@ -140,14 +141,12 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 		return errors.New("data parse error")
 	}
 
-	log.Sugar.Info(txData)
 	datas, err := utils.InputToBNB48Inscription([]byte(txData), blockNumber.Uint64())
 	if err != nil {
 		return err
 	}
 
 	transDataMap := make(map[string]string)
-
 	for _, data := range datas {
 		if data == nil {
 			return errors.New("data is nil")
@@ -183,7 +182,7 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 	}
 
 	for opIndex, data := range datas {
-		if err = s.transfer(tx, block, trans, data, int(index), opIndex); err != nil {
+		if err = s.transfer(tx, block, trans, data, int(index), opIndex, hexutil.Encode([]byte(txData))); err != nil {
 			return err
 		}
 	}
@@ -191,14 +190,14 @@ func (s *WrapService) deleteForWrap(tx *gorm.DB, models []dao.WrapModel, txHash 
 	return nil
 }
 
-func (s *WrapService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int) error {
+func (s *WrapService) transfer(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int, input string) error {
 	insc, ok := s.inscriptions[inscription.TickHash]
 	// not deploy
 	if !ok {
 		return errors.New("not deploy")
 	}
 
-	amt, err := s.transferForFrom(db, block, tx, inscription, index, opIndex)
+	amt, err := s.transferForFrom(db, block, tx, inscription, index, opIndex, input)
 	if err != nil {
 		return err
 	}
@@ -210,7 +209,7 @@ func (s *WrapService) transfer(db *gorm.DB, block *types.Block, tx *types.Transa
 	return nil
 }
 
-func (s *WrapService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int) (*big.Int, error) {
+func (s *WrapService) transferForFrom(db *gorm.DB, block *types.Block, tx *types.Transaction, inscription *helper.BNB48InscriptionVerified, index, opIndex int, input string) (*big.Int, error) {
 	from := strings.ToLower(utils.GetTxFrom(tx).Hex())
 
 	// sub balance of tx from
@@ -244,11 +243,34 @@ func (s *WrapService) transferForFrom(db *gorm.DB, block *types.Block, tx *types
 			return nil, err
 		}
 	}
-	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransfer); err != nil {
+	if err = s.createRecord(db, tx, block, inscription, index, opIndex, from, strings.ToLower(tx.To().Hex()), helper.InscriptionStatusTransfer, input); err != nil {
 		return nil, err
 	}
 
 	return inscription.AmtV, nil
+}
+
+func (s *WrapService) createRecord(db *gorm.DB, tx *types.Transaction, block *types.Block, inscription *helper.BNB48InscriptionVerified, index, opIndex int, from, to string, txType helper.AccountRecordsType, input string, isPending ...bool) error {
+	record := &dao.AccountRecordsModel{
+		Block:    block.NumberU64(),
+		TxHash:   tx.Hash().Hex(),
+		TxIndex:  uint64(index),
+		OpIndex:  uint64(opIndex),
+		TickHash: inscription.TickHash,
+		BlockAt:  block.Time(),
+		From:     from,
+		To:       to,
+		Input:    input,
+		Type:     txType,
+		OpJson: func() string {
+			b, _ := json.Marshal(inscription.BNB48Inscription)
+			return string(b)
+		}(),
+	}
+	if len(isPending) > 0 && isPending[0] {
+		s.updateRam(record, block.NumberU64())
+	}
+	return s.accountRecords.Create(db, record)
 }
 
 func (s *WrapService) deleteForUnWrap(rs *types.Receipt, models []dao.WrapModel) error {
