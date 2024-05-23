@@ -93,9 +93,9 @@ func (s *WrapService) delete(tx *gorm.DB, rs *types.Receipt, ids []uint64, block
 
 	switch uniT {
 	case 1:
-		return s.deleteForWrap(tx, models, rs.TxHash.Hex(), blockNumber, index)
-	case 2:
 		return s.deleteForUnWrap(rs, models)
+	case 2:
+		return s.deleteForWrap(tx, models, rs.TxHash.Hex(), blockNumber, index)
 	}
 
 	return nil
