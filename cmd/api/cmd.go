@@ -20,7 +20,6 @@ import (
 
 func Start(pendingTxs *types.GlobalVariable) {
 	app := config.GetConfig().App
-	log.Init("api.log")
 
 	gin.DefaultWriter = log.Write
 	r := router.NewBotRoute(pendingTxs)
