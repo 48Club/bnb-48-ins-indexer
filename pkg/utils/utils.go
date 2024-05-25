@@ -20,9 +20,6 @@ import (
 )
 
 var (
-	bscChainID        = big.NewInt(56)
-	londonSigner      = types.NewLondonSigner(bscChainID)
-	eIP155Signer      = types.NewEIP155Signer(bscChainID)
 	dataRe, _         = regexp.Compile("data:([^\"]*),(.*)")
 	maxU256           = abi.MaxUint256
 	bulkCannotContain = mapset.NewSet[string]()
@@ -46,9 +43,9 @@ func GetTxFrom(tx *types.Transaction) common.Address {
 	var from common.Address
 	switch tx.Type() {
 	case types.LegacyTxType:
-		from, _ = types.Sender(eIP155Signer, tx)
+		from, _ = types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
 	case types.DynamicFeeTxType:
-		from, _ = types.Sender(londonSigner, tx)
+		from, _ = types.Sender(types.NewLondonSigner(tx.ChainId()), tx)
 	}
 
 	return from
@@ -360,4 +357,26 @@ func parseAmt(ins *helper.BNB48InscriptionVerified, b bool) bool {
 
 	ins.AmtV, err = StringToBigint(ins.Amt)
 	return checkBigBetween(ins.AmtV, err, b)
+}
+
+func Unpack(types []string, data []byte) ([]interface{}, error) {
+	var (
+		ts   []abi.Type
+		args = abi.Arguments{}
+	)
+
+	for _, t := range types {
+		_t, err := abi.NewType(t, t, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		ts = append(ts, _t)
+	}
+
+	for _, t := range ts {
+		args = append(args, abi.Argument{Type: t})
+	}
+
+	return args.Unpack(data)
 }

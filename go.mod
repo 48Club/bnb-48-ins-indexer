@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/sony/sonyflake v1.2.0
 	github.com/spf13/viper v1.18.2
+	github.com/status-im/keycard-go v0.2.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1

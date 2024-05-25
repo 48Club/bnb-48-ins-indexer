@@ -3,6 +3,7 @@ package utils
 import (
 	"bnb-48-ins-indexer/pkg/helper"
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/status-im/keycard-go/hexutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -258,4 +260,30 @@ func Test_verifyInscription(t *testing.T) {
 			assert.Equalf(t, tt.want, ojbV.BNB48Inscription, "verifyInscription(%v)", tt.args.ins)
 		})
 	}
+}
+
+func Test111(t *testing.T) {
+	b := hexutils.HexToBytes("5ef7f1d90000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000017d646174613a6170706c69636174696f6e2f6a736f6e2c5b7b2270223a22626e622d3438222c226f70223a227472616e73666572222c227469636b2d68617368223a22307864383933636137376233313232636236633438306461376638613132636238326531393534323037366635383935663231343436323538646334373361376332222c22746f223a22307833613732623138663934333833356465323662393735663038376332376666613562613565353063222c22616d74223a223130303030303030227d2c7b2270223a22626e622d3438222c226f70223a227472616e73666572222c227469636b2d68617368223a22307864383933636137376233313232636236633438306461376638613132636238326531393534323037366635383935663231343436323538646334373361376332222c22746f223a22307831313361636666306537646263353530343338636535316362653663306235636435366562383861222c22616d74223a223130303030303030227d5d000000")
+
+	r, err := Unpack([]string{"string"}, b[4:])
+	assert.NoError(t, err)
+
+	var txData string
+
+	switch r[0].(type) {
+	case string:
+		txData = r[0].(string)
+	}
+
+	fmt.Println(txData)
+	datas, err := InputToBNB48Inscription([]byte(txData), 36_244_355)
+	assert.NoError(t, err)
+
+	fmt.Println(datas)
+}
+
+func TestPrintHexAddress(t *testing.T) {
+	hexAddress := common.HexToHash("0x0000000000000000000000008894e0a0c962cb723c1976a4421c95949be2d4e3")
+	t.Log(strings.ToLower(common.HexToAddress(hexAddress.Hex()).Hex()))
+	t.Log(strings.ToLower(common.BytesToAddress(hexAddress.Bytes()).Hex()))
 }

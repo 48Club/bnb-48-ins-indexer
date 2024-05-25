@@ -11,7 +11,6 @@ import (
 )
 
 func Upgrade() {
-	log.Init("index.log")
 	db := database.Mysql()
 
 	accountRecords := &dao.AccountRecordsHandler{}

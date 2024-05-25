@@ -3,6 +3,7 @@ package dao
 import (
 	"errors"
 	"fmt"
+	"gorm.io/gorm/clause"
 	"time"
 
 	"gorm.io/gorm"
@@ -15,6 +16,7 @@ type IInscription interface {
 	Count(db *gorm.DB) (int64, error)
 	UpdateHolders(db *gorm.DB, tick string, delta int64) error
 	Update(db *gorm.DB, id uint64, data map[string]interface{}) error
+	Lock(db *gorm.DB) (*InscriptionModel, error)
 }
 
 type InscriptionModel struct {
@@ -96,4 +98,12 @@ func (h *InscriptionHandler) Update(db *gorm.DB, id uint64, data map[string]inte
 	data["update_at"] = time.Now().Unix()
 
 	return db.Table(h.TableName()).Where("id = ?", id).UpdateColumns(data).Error
+}
+
+func (h *InscriptionHandler) Lock(db *gorm.DB) (*InscriptionModel, error) {
+	var data InscriptionModel
+
+	tx := db.Table(h.TableName()).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = 1").First(&data)
+
+	return &data, tx.Error
 }

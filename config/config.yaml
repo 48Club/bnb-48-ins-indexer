@@ -3,6 +3,8 @@ bnb48_index:
   port: 8888
   route_prefix: /bnb48_index
   bsc_rpc: /opt/.ethereum/geth.ipc
+  bsc_wrap_ca: 0xec6dCA59A5d82061B5092A78B61f0259Ce7dc5C0
+  receive_fans_addr: 0x9567443394a3a611A6335Bab0e64f7F5E0cD83fd
   bulk_cannot_contain:
     - deploy
     - recap

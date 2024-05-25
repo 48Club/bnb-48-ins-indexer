@@ -76,3 +76,16 @@ type GetRecordReq struct {
 type GetRecordRsp struct {
 	List []*dao.AccountRecordsModel `json:"list"`
 }
+
+type ListWrapReq struct {
+	Type uint64 `json:"type" form:"type" binding:"required"`
+}
+
+type ListWrapRsp struct {
+	List []dao.WrapModel `json:"list"`
+}
+
+type DeleteWrapReq struct {
+	Ids  []string `json:"ids" form:"ids" validate:"min=1,max=50"`
+	Hash string   `json:"hash" form:"hash" binding:"required"`
+}

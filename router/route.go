@@ -34,6 +34,7 @@ func NewBotRoute(pendingTxs *types.GlobalVariable) *gin.Engine {
 		account     = controler.NewAccountController(pendingTxs)
 		record      = controler.NewRecordController(pendingTxs)
 		inscription = controler.NewInscriptionController(pendingTxs)
+		wrap        = controler.NewWrapController()
 	)
 
 	v1 := bnb48.Group("/v1", cache.Cache(store, BSCPerBlockTime, cache.WithCacheStrategyByRequest(func(c *gin.Context) (bool, cache.Strategy) {
@@ -49,6 +50,8 @@ func NewBotRoute(pendingTxs *types.GlobalVariable) *gin.Engine {
 		v1.POST("/record/list", record.List)
 		v1.POST("/inscription/list", inscription.List)
 		v1.POST("/account/balance", account.Balance)
+		v1.POST("/wrap_unwrap/list", wrap.List)
+		v1.POST("/wrap_unwrap/delete", wrap.Delete)
 	}
 
 	return r

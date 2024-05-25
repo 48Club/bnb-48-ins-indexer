@@ -3,9 +3,9 @@ package main
 import (
 	"bnb-48-ins-indexer/cmd/api"
 	"bnb-48-ins-indexer/cmd/index"
+	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/scripts/upgrade/pr65"
-
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -13,11 +13,14 @@ import (
 var PendingTxs types.GlobalVariable
 
 func main() {
-	api.Start(&PendingTxs)
-	index.Start(&PendingTxs)
+	go api.Start(&PendingTxs)
+	go index.Start(&PendingTxs)
+	select {}
 }
 
 func init() {
+	log.Init("index.log")
+
 	PendingTxs = types.GlobalVariable{
 		Txs:           make(types.RecordsModelByTxHash),
 		TxsHash:       mapset.NewSet[string](),
@@ -28,5 +31,4 @@ func init() {
 	}
 
 	pr65.Upgrade() // upgrade db, more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/65/files
-
 }

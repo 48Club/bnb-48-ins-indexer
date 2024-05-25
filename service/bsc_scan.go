@@ -8,6 +8,7 @@ import (
 	"bnb-48-ins-indexer/pkg/helper"
 	"bnb-48-ins-indexer/pkg/log"
 	"bnb-48-ins-indexer/pkg/utils"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -31,6 +32,8 @@ const (
 	FutureEnableBNForPR67 uint64 = 35_354_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
 )
 
+var defaultBscScanService *BscScanService
+
 type BscScanService struct {
 	account        dao.IAccount
 	accountRecords dao.IAccountRecords
@@ -40,6 +43,7 @@ type BscScanService struct {
 	conf           config.Config
 	pendingTxs     *types2.GlobalVariable
 	allowance      dao.IAllowance
+	WrapDao        dao.IWrap
 }
 
 type inscription struct {
@@ -69,6 +73,7 @@ func NewBscScanService(pendingTxs *types2.GlobalVariable) *BscScanService {
 		inscriptions:   make(map[string]*inscription),
 		conf:           config.GetConfig(),
 		pendingTxs:     pendingTxs,
+		WrapDao:        &dao.WrapHandler{},
 	}
 }
 
@@ -117,6 +122,7 @@ func (s *BscScanService) init() error {
 		s.inscriptions[ele.TickHash] = &insc
 	}
 
+	defaultBscScanService = s
 	return nil
 }
 
@@ -229,9 +235,19 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 	db := database.Mysql().Begin()
 	defer db.Rollback()
 
+	if _, err := s.inscriptionDao.Lock(db); err != nil {
+		return err
+	}
+
 	for index, tx := range block.Transactions() {
 		// 当索引出现错误时, 需要回退区块重新同步需要添加 sp 事务
 		// db.SavePoint("sp1")
+
+		if tx.To() != nil && strings.EqualFold(tx.To().Hex(), s.conf.App.BscWrapCa) {
+			if err := s.WrapUnWrap(db, block, tx, index, isPending...); err != nil {
+				return err
+			}
+		}
 
 		if err := s._work(db, block, tx, index, isPending...); err != nil {
 			// if strings.Contains(strings.ToLower(err.Error()), strings.ToLower("1062 (23000): Duplicate entry")) {
@@ -624,6 +640,7 @@ func (s *BscScanService) transferForFrom(db *gorm.DB, block *types.Block, tx *ty
 
 	return inscription.AmtV, nil
 }
+
 func (s *BscScanService) accountCheck(db *gorm.DB, to string) (*dao.AccountModel, error) {
 	account, err := s.account.SelectByAddress(db, to)
 	if err != nil {
@@ -917,4 +934,129 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, bn uint64) {
 
 	s.pendingTxs.UpdateTxsByTickHash(record.TickHash, txsHash, record)
 
+}
+
+func (s *BscScanService) WrapUnWrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, isPending ...bool) error {
+	var (
+		tickHash string
+		amt      *big.Int
+	)
+
+	if tx.To() == nil {
+		return nil
+	}
+
+	data := tx.Data()
+	if len(data) < 4 {
+		return nil
+	}
+
+	if !strings.EqualFold(tx.To().Hex(), s.conf.App.BscWrapCa) {
+		return nil
+	}
+
+	r, err := utils.Unpack([]string{"string", "uint256"}, data[4:])
+	if err != nil {
+		log.Sugar.Error(err)
+		return nil
+	}
+
+	switch r[0].(type) {
+	case string:
+		tickHash = r[0].(string)
+	default:
+		return nil
+	}
+
+	switch r[1].(type) {
+	case *big.Int:
+		amt = r[1].(*big.Int)
+	default:
+		return nil
+	}
+
+	if amt.Cmp(big.NewInt(1)) < 0 {
+		return nil
+	}
+
+	rs, err := global.BscClient.TransactionReceipt(context.TODO(), tx.Hash())
+	if err != nil {
+		return err
+	}
+
+	if rs.Status != 1 {
+		return nil
+	}
+
+	// ins -> erc20
+	if bytes.Equal(data[:4], []byte{88, 5, 173, 97}) {
+		return s.Wrap(db, block, tx, index, tickHash, amt, isPending...)
+	}
+
+	// erc20 -> ins
+	if bytes.Equal(data[:4], []byte{171, 25, 182, 14}) {
+		return s.unWrap(db, block, tx, index, tickHash, amt, isPending...)
+	}
+
+	return nil
+}
+
+func (s *BscScanService) Wrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, tickHash string, amtv *big.Int, isPending ...bool) error {
+	var insc = helper.BNB48InscriptionVerified{BNB48Inscription: &helper.BNB48Inscription{}}
+	insc.From = strings.ToLower(utils.GetTxFrom(tx).Hex())
+	insc.To = strings.ToLower(s.conf.App.ReceiveFansAddr)
+	insc.Op = "transfer"
+	insc.TickHash = tickHash
+	insc.AmtV = amtv
+	insc.P = "bnb-48"
+	insc.Amt = amtv.String()
+
+	ins, ok := s.inscriptions[insc.TickHash]
+	// not deploy
+	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s, tick-hash: %s", tx.Hash().Hex(), "not deploy", insc.TickHash)
+		return nil
+	}
+
+	amt, err := s.transferForFrom(db, block, tx, &insc, index, 0, isPending...)
+	if err != nil {
+		return err
+	}
+
+	if err = s.transferForTo(db, amt, ins, insc.To, isPending...); err != nil {
+		return err
+	}
+
+	// add record for Wrap
+	if insc.AmtV.Cmp(amt) != 0 {
+		return nil
+	}
+
+	model := dao.WrapModel{
+		TickHash: tickHash,
+		TxHash:   tx.Hash().Hex(),
+		To:       insc.From,
+		Amt:      insc.AmtV.String(),
+		Type:     1, // Wrap
+	}
+	return s.WrapDao.Create(db, &model)
+}
+
+func (s *BscScanService) unWrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, tickHash string, amtv *big.Int, isPending ...bool) error {
+	_, ok := s.inscriptions[tickHash]
+	// not deploy
+	if !ok {
+		log.Sugar.Debugf("tx: %s, error: %s, tick-hash: %s", tx.Hash().Hex(), "not deploy", tickHash)
+		return nil
+	}
+
+	// add record for Wrap
+	model := dao.WrapModel{
+		TickHash: tickHash,
+		TxHash:   tx.Hash().Hex(),
+		To:       strings.ToLower(utils.GetTxFrom(tx).Hex()),
+		Amt:      amtv.String(),
+		Type:     2, // unWrap
+	}
+	return s.WrapDao.Create(db, &model)
 }

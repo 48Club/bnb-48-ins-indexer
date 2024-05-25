@@ -45,6 +45,8 @@ type AppConfig struct {
 	RoutePrefix       string   `mapstructure:"route_prefix"`
 	BscRpc            string   `mapstructure:"bsc_rpc"`
 	BulkCannotContain []string `mapstructure:"bulk_cannot_contain"`
+	BscWrapCa         string   `mapstructure:"bsc_wrap_ca"`
+	ReceiveFansAddr   string   `mapstructure:"receive_fans_addr"`
 }
 
 type Config struct {
