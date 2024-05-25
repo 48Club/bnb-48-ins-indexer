@@ -12,15 +12,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math/big"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"gorm.io/gorm"
-	"math/big"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type WrapService struct {
@@ -289,7 +290,7 @@ func (s *WrapService) deleteForUnWrap(rs *types.Receipt, models []dao.WrapModel)
 
 	for _, event := range rs.Logs {
 		var data []interface{}
-		if !strings.EqualFold(event.Topics[0].Hex(), "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") { // transfer
+		if event.Topics[0] != common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") { // transfer
 			continue
 		}
 

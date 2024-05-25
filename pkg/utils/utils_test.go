@@ -4,7 +4,6 @@ import (
 	"bnb-48-ins-indexer/pkg/helper"
 	"context"
 	"fmt"
-	"github.com/status-im/keycard-go/hexutils"
 	"math/big"
 	"strings"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/status-im/keycard-go/hexutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -280,4 +280,10 @@ func Test111(t *testing.T) {
 	assert.NoError(t, err)
 
 	fmt.Println(datas)
+}
+
+func TestPrintHexAddress(t *testing.T) {
+	hexAddress := common.HexToHash("0x0000000000000000000000008894e0a0c962cb723c1976a4421c95949be2d4e3")
+	t.Log(strings.ToLower(common.HexToAddress(hexAddress.Hex()).Hex()))
+	t.Log(strings.ToLower(common.BytesToAddress(hexAddress.Bytes()).Hex()))
 }
