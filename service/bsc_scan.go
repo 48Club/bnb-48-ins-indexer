@@ -7,6 +7,7 @@ import (
 	"bnb-48-ins-indexer/pkg/global"
 	"bnb-48-ins-indexer/pkg/helper"
 	"bnb-48-ins-indexer/pkg/log"
+	types2 "bnb-48-ins-indexer/pkg/types"
 	"bnb-48-ins-indexer/pkg/utils"
 	"bytes"
 	"context"
@@ -16,8 +17,6 @@ import (
 	"math/big"
 	"strings"
 	"time"
-
-	types2 "bnb-48-ins-indexer/pkg/types"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,6 +29,7 @@ import (
 const (
 	FutureEnableBNForPR61 uint64 = 35_084_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/61
 	FutureEnableBNForPR67 uint64 = 35_354_848 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/67
+	FutureEnableBNForPR69 uint64 = 39_035_948 // more detail: https://github.com/48Club/bnb-48-ins-indexer/pull/69
 )
 
 var defaultBscScanService *BscScanService
@@ -937,6 +937,10 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, bn uint64) {
 }
 
 func (s *BscScanService) WrapUnWrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, isPending ...bool) error {
+	if block.NumberU64() < FutureEnableBNForPR69 {
+		return nil
+	}
+
 	var (
 		tickHash string
 		amt      *big.Int
