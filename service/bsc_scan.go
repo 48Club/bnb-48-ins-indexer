@@ -22,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"gorm.io/gorm"
 )
@@ -244,7 +245,7 @@ func (s *BscScanService) work(block *types.Block, isPending ...bool) error {
 		// db.SavePoint("sp1")
 
 		if tx.To() != nil && strings.EqualFold(tx.To().Hex(), s.conf.App.BscWrapCa) {
-			if err := s.WrapUnWrap(db, block, tx, index, isPending...); err != nil {
+			if err := s.wrapUnWrap(db, block, tx, index); err != nil {
 				return err
 			}
 		}
@@ -586,7 +587,7 @@ func (s *BscScanService) transfer(db *gorm.DB, block *types.Block, tx *types.Tra
 		return err
 	}
 
-	if err = s.transferForTo(db, amt, insc, inscription.To, isPending...); err != nil {
+	if err = s.transferForTo(db, amt, insc, inscription.To); err != nil {
 		return err
 	}
 
@@ -656,7 +657,7 @@ func (s *BscScanService) accountCheck(db *gorm.DB, to string) (*dao.AccountModel
 	return account, err
 }
 
-func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string, isPending ...bool) error {
+func (s *BscScanService) transferForTo(db *gorm.DB, amt *big.Int, insc *inscription, to string) error {
 	// account
 	account, err := s.accountCheck(db, to)
 	if err != nil {
@@ -936,7 +937,7 @@ func (s *BscScanService) updateRam(record *dao.AccountRecordsModel, bn uint64) {
 
 }
 
-func (s *BscScanService) WrapUnWrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, isPending ...bool) error {
+func (s *BscScanService) wrapUnWrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int) error {
 	if block.NumberU64() < FutureEnableBNForPR69 {
 		return nil
 	}
@@ -946,16 +947,8 @@ func (s *BscScanService) WrapUnWrap(db *gorm.DB, block *types.Block, tx *types.T
 		amt      *big.Int
 	)
 
-	if tx.To() == nil {
-		return nil
-	}
-
 	data := tx.Data()
 	if len(data) < 4 {
-		return nil
-	}
-
-	if !strings.EqualFold(tx.To().Hex(), s.conf.App.BscWrapCa) {
 		return nil
 	}
 
@@ -965,17 +958,13 @@ func (s *BscScanService) WrapUnWrap(db *gorm.DB, block *types.Block, tx *types.T
 		return nil
 	}
 
-	switch r[0].(type) {
-	case string:
-		tickHash = r[0].(string)
-	default:
+	tickHash, ok := r[0].(string)
+	if !ok {
 		return nil
 	}
 
-	switch r[1].(type) {
-	case *big.Int:
-		amt = r[1].(*big.Int)
-	default:
+	amt, ok = r[1].(*big.Int)
+	if !ok {
 		return nil
 	}
 
@@ -993,19 +982,24 @@ func (s *BscScanService) WrapUnWrap(db *gorm.DB, block *types.Block, tx *types.T
 	}
 
 	// ins -> erc20
-	if bytes.Equal(data[:4], []byte{88, 5, 173, 97}) {
-		return s.Wrap(db, block, tx, index, tickHash, amt, isPending...)
+	if bytes.Equal(data[:4], methodUnWarp) {
+		return s.wrap(db, block, tx, index, tickHash, amt)
 	}
 
 	// erc20 -> ins
-	if bytes.Equal(data[:4], []byte{171, 25, 182, 14}) {
-		return s.unWrap(db, block, tx, index, tickHash, amt, isPending...)
+	if bytes.Equal(data[:4], methodWrap) {
+		return s.unWrap(db, tx, tickHash, amt)
 	}
 
 	return nil
 }
 
-func (s *BscScanService) Wrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, tickHash string, amtv *big.Int, isPending ...bool) error {
+var (
+	methodUnWarp = crypto.Keccak256([]byte("unwarp(string,uint256)"))[:4]
+	methodWrap   = crypto.Keccak256([]byte("warp(string,uint256)"))[:4]
+)
+
+func (s *BscScanService) wrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, tickHash string, amtv *big.Int) error {
 	var insc = helper.BNB48InscriptionVerified{BNB48Inscription: &helper.BNB48Inscription{}}
 	insc.From = strings.ToLower(utils.GetTxFrom(tx).Hex())
 	insc.To = strings.ToLower(s.conf.App.ReceiveFansAddr)
@@ -1022,12 +1016,12 @@ func (s *BscScanService) Wrap(db *gorm.DB, block *types.Block, tx *types.Transac
 		return nil
 	}
 
-	amt, err := s.transferForFrom(db, block, tx, &insc, index, 0, isPending...)
+	amt, err := s.transferForFrom(db, block, tx, &insc, index, 0)
 	if err != nil {
 		return err
 	}
 
-	if err = s.transferForTo(db, amt, ins, insc.To, isPending...); err != nil {
+	if err = s.transferForTo(db, amt, ins, insc.To); err != nil {
 		return err
 	}
 
@@ -1046,7 +1040,7 @@ func (s *BscScanService) Wrap(db *gorm.DB, block *types.Block, tx *types.Transac
 	return s.WrapDao.Create(db, &model)
 }
 
-func (s *BscScanService) unWrap(db *gorm.DB, block *types.Block, tx *types.Transaction, index int, tickHash string, amtv *big.Int, isPending ...bool) error {
+func (s *BscScanService) unWrap(db *gorm.DB, tx *types.Transaction, tickHash string, amtv *big.Int) error {
 	_, ok := s.inscriptions[tickHash]
 	// not deploy
 	if !ok {

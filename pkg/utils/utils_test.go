@@ -10,6 +10,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/stretchr/testify/assert"
@@ -286,4 +287,26 @@ func TestPrintHexAddress(t *testing.T) {
 	hexAddress := common.HexToHash("0x0000000000000000000000008894e0a0c962cb723c1976a4421c95949be2d4e3")
 	t.Log(strings.ToLower(common.HexToAddress(hexAddress.Hex()).Hex()))
 	t.Log(strings.ToLower(common.BytesToAddress(hexAddress.Bytes()).Hex()))
+}
+
+func TestDecodeCallData(t *testing.T) {
+	hexData := hexutil.MustDecode("0x5805ad61000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000042307864383933636137376233313232636236633438306461376638613132636238326531393534323037366635383935663231343436323538646334373361376332000000000000000000000000000000000000000000000000000000000000")[4:]
+
+	r, err := Unpack([]string{"string", "uint256"}, hexData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tickHash, ok := r[0].(string)
+	if !ok {
+		t.Fatal("tickHash is not string")
+	}
+
+	amt, ok := r[1].(*big.Int)
+	if !ok {
+		t.Fatal("amt is not *big.Int")
+	}
+
+	t.Log(tickHash, amt)
+
 }
