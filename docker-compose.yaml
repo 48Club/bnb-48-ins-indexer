@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   48club-ins:
     build:
@@ -7,45 +5,16 @@ services:
       dockerfile: ./Dockerfile
     restart: always
     ports:
-      - 0.0.0.0:8547:8888/tcp
+      - 0.0.0.0:8888:8888/tcp
     volumes:
       - ./config:/48club/config
       - /opt/data/bnb48_index/logs:/48club/logs
       - /root/.ethereum/:/opt/.ethereum/
-    depends_on:
-      - mysql
     environment:
       - TZ=${TZ}
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD}
     logging:
-      &logging
       driver: "json-file"
       options:
         max-file: "3"
         max-size: 10m
-
-  mysql:
-    image: "mysql:8.0.29"
-    environment:
-      - TZ=${TZ}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-    restart: always
-    volumes:
-      - /opt/data/bnb48_index/mysql/conf:/etc/mysql/conf.d
-      - /opt/data/bnb48_index/mysql/data:/var/lib/mysql
-      - /opt/data/bnb48_index/mysql/logs:/var/log/mysql
-      - ./scripts/sql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-    logging:
-      <<: *logging
-
-  phpmyadmin:
-    image: phpmyadmin:latest
-    restart: always
-    depends_on:
-      - mysql
-    ports:
-      - 8548:80/tcp
-    environment:
-      - PMA_HOST=mysql
-    logging:
-      <<: *logging

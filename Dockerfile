@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine3.19
+FROM golang:alpine
 
 WORKDIR /48club
 COPY . .

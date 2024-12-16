@@ -2,8 +2,8 @@ bnb48_index:
   name: bnb48_index
   port: 8888
   route_prefix: /bnb48_index
-  bsc_rpc: /opt/.ethereum/geth.ipc
-  bsc_wrap_ca: 0xec6dCA59A5d82061B5092A78B61f0259Ce7dc5C0
+  bsc_rpc: ws://192.168.1.101:8545
+  bsc_wrap_ca: 0x83b16A2C9Bf52Ea03036E8617c9Dd13AE975f218
   receive_fans_addr: 0x9567443394a3a611A6335Bab0e64f7F5E0cD83fd
   bulk_cannot_contain:
     - deploy
@@ -19,7 +19,7 @@ log:
   compress: false
 
 mysql:
-  url: root:mysqlpasswd@tcp(mysql:3306)/bnb48_inscription?charset=utf8mb4&parseTime=True&loc=Local
+  url: root:mysqlpasswd@tcp(192.168.0.103:3306)/bnb48_inscription?charset=utf8mb4&parseTime=True&loc=Local
   prefix: ""
   max_idle_conns: 10
   max_open_conns: 50
